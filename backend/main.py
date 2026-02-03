@@ -223,21 +223,27 @@ async def predict_clinical(data: ClinicalInput):
                 features_to_vary=modifiable_features
             )
             cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
-            def force_float(val):
-                try:
-                    if isinstance(val, (list, np.ndarray)):
+            def force_float_robust(val):
+                if isinstance(val, (int, float, np.number)):
+                    return float(val)                
+                if isinstance(val, (list, np.ndarray)):
+                    try:
                         return float(val[0])
-                    clean_str = str(val).replace('[', '').replace(']', '').replace("'", "").strip()
+                    except:
+                        return 0.0                
+                val_str = str(val).strip()
+                clean_str = val_str.replace('[', '').replace(']', '').replace("'", "").replace('"', '')
+                try:
                     return float(clean_str)
-                except (ValueError, TypeError, IndexError):
+                except ValueError:
                     return 0.0
+            for col in cf_df.columns:
+                cf_df[col] = cf_df[col].apply(force_float_robust)
             if 'target' in cf_df.columns:
                 cf_df = cf_df.drop(columns=['target'])
-            for col in cf_df.columns:
-                cf_df[col] = cf_df[col].apply(force_float)
             dice_data = cf_df.to_dict(orient='records')
         except Exception as e:
-            print(f"DiCE failed: {e}")
+            print(f"DiCE Error details: {str(e)}")
             dice_data = None
 
         llm_report = get_llm_advice(prediction, prob, input_dict, top_drivers_readable)
