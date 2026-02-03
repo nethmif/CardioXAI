@@ -1,11 +1,11 @@
---index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
 fastapi
-uvicorn[standard]
+uvicorn
 python-multipart
+Pillow
 opencv-python-headless
-pillow
 numpy
 matplotlib
 joblib
@@ -13,6 +13,7 @@ pandas
 dice-ml
 shap
 lime
+pydantic
 openai
 python-dotenv
 grad-cam
