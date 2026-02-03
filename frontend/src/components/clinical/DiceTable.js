@@ -11,7 +11,8 @@ const DiceTable = ({ diceData }) => {
     );
   }
   try {
-    const data = JSON.parse(diceData);
+    // const data = JSON.parse(diceData);
+    const data = diceData;
     const headers = Object.keys(data[0]);
 
     return (
