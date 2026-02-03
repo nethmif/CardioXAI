@@ -28,25 +28,25 @@ client = OpenAI()
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# origins = [
-#     "http://localhost:3000",                  
-#     "VERCEL_URL", 
-# ]
-
 # app.add_middleware(
 #     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
+#     allow_origins=["*"],  
 #     allow_methods=["*"],
 #     allow_headers=["*"],
 # )
+
+origins = [
+    "http://localhost:3000",                  
+    "https://cardioxai-frontend.vercel.app", 
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
