@@ -1,3 +1,26 @@
+# import torch
+# import io
+# import cv2
+# import numpy as np
+# from fastapi import FastAPI, UploadFile, File
+# from fastapi.middleware.cors import CORSMiddleware
+# from PIL import Image
+# from model_utils import HierarchicalECGModel
+# from processor import process_ecg_signal  
+# import base64
+# from xai_helper import generate_heatmaps
+# import matplotlib
+# matplotlib.use('Agg')
+# matplotlib.font_manager._get_fontconfig_fonts.cache_clear()
+# import matplotlib.pyplot as plt
+# import joblib
+# import pandas as pd
+# import dice_ml
+# import shap
+# import lime
+# from pydantic import BaseModel
+# from openai import OpenAI
+# from dotenv import load_dotenv
 import torch
 import io
 import cv2
@@ -5,22 +28,11 @@ import numpy as np
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-from model_utils import HierarchicalECGModel
-from processor import process_ecg_signal  
 import base64
-from xai_helper import generate_heatmaps
-import matplotlib
-matplotlib.use('Agg')
-matplotlib.font_manager._get_fontconfig_fonts.cache_clear()
-import matplotlib.pyplot as plt
-import joblib
-import pandas as pd
-import dice_ml
-import shap
-import lime
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
+import os
 
 load_dotenv()      
 
@@ -48,14 +60,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
-model = HierarchicalECGModel().to(device)
+model = None
+clinical_model = None
+dice_train_df = None
 
-# checkpoint = torch.load('backend/checkpoints/best_hierarchical_model.pth', map_location=device)
-checkpoint = torch.load('checkpoints/best_hierarchical_model.pth', map_location=device)
-model.load_state_dict(checkpoint['model_state_dict'])
-model.eval()
+# # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cpu")
+# model = HierarchicalECGModel().to(device)
+
+# # checkpoint = torch.load('backend/checkpoints/best_hierarchical_model.pth', map_location=device)
+# checkpoint = torch.load('checkpoints/best_hierarchical_model.pth', map_location=device)
+# model.load_state_dict(checkpoint['model_state_dict'])
+# model.eval()
+
+def load_ecg_model():
+    global model
+    if model is None:
+        from model_utils import HierarchicalECGModel
+        model = HierarchicalECGModel().to(device)
+        checkpoint = torch.load('checkpoints/best_hierarchical_model.pth', map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        model.eval()
+    return model
+
+def load_clinical_assets():
+    global clinical_model, dice_train_df
+    if clinical_model is None:
+        import joblib
+        import pandas as pd
+        clinical_model = joblib.load('checkpoints/clinical_model.pkl')
+        dice_train_df = pd.read_pickle('checkpoints/train_data.pkl')
+    return clinical_model, dice_train_df
 
 @app.get("/")
 def read_root():
@@ -65,8 +101,19 @@ def encode_img(img):
     _, buffer = cv2.imencode('.jpg', img)
     return base64.b64encode(buffer).decode('utf-8')
 
+# @app.post("/predict")
+# async def predict(file: UploadFile = File(...)):
+#     try:
+#         data = await file.read()
+#         image = Image.open(io.BytesIO(data)).convert('RGB')
+#         img_cv2 = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+#         processed_img = process_ecg_signal(img_cv2)
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    current_model = load_ecg_model()
+    from xai_helper import generate_heatmaps
+    from processor import process_ecg_signal
+
     try:
         data = await file.read()
         image = Image.open(io.BytesIO(data)).convert('RGB')
@@ -80,7 +127,8 @@ async def predict(file: UploadFile = File(...)):
         input_tensor = img_t.unsqueeze(0).to(device)
         
         with torch.no_grad():
-            out1, out2 = model(input_tensor)
+            # out1, out2 = model(input_tensor)
+            out1, out2 = current_model(input_tensor)
             prob1 = torch.sigmoid(out1).item()
             if prob1 > 0.5:
                 l1_label = "Myocardial"
@@ -93,8 +141,9 @@ async def predict(file: UploadFile = File(...)):
             l2_label = l2_classes[l2_idx]
 
         rgb_for_xai = processed_img.astype(np.float32) / 255.0
-        vis_l1, vis_l2 = generate_heatmaps(model, input_tensor, rgb_for_xai)
-        
+        # vis_l1, vis_l2 = generate_heatmaps(model, input_tensor, rgb_for_xai)
+        vis_l1, vis_l2 = generate_heatmaps(current_model, input_tensor, rgb_for_xai)
+
         return {
             "level1_prediction": l1_label,
             "level1_confidence": f"{display_confidence:.4f}",
@@ -108,16 +157,29 @@ async def predict(file: UploadFile = File(...)):
         print(traceback.format_exc()) 
         return {"error": str(e)}
 
+# def get_base64_plot(fig=None):
+#     buf = io.BytesIO()
+#     if fig:
+#         fig.savefig(buf, format='png', bbox_inches='tight')
+#     else:
+#         plt.savefig(buf, format='png', bbox_inches='tight')
+    
+#     buf.seek(0)
+#     img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
+#     plt.close('all')  
+#     return img_str
 def get_base64_plot(fig=None):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
     buf = io.BytesIO()
     if fig:
         fig.savefig(buf, format='png', bbox_inches='tight')
     else:
         plt.savefig(buf, format='png', bbox_inches='tight')
-    
     buf.seek(0)
     img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
-    plt.close('all')  
+    plt.close('all')
     return img_str
 
 FEATURE_NAMES_DISPLAY = {
@@ -145,8 +207,8 @@ INTERNAL_MAPPING = {
 
 # clinical_model = joblib.load('backend/checkpoints/clinical_model.pkl')
 # dice_train_df = pd.read_pickle('backend/checkpoints/train_data.pkl')
-clinical_model = joblib.load('checkpoints/clinical_model.pkl')
-dice_train_df = pd.read_pickle('checkpoints/train_data.pkl')
+# clinical_model = joblib.load('checkpoints/clinical_model.pkl')
+# dice_train_df = pd.read_pickle('checkpoints/train_data.pkl')
 
 class ClinicalInput(BaseModel):
     age: float
@@ -163,8 +225,20 @@ class ClinicalInput(BaseModel):
     thal: float
     slope: float
 
+# @app.post("/predict_clinical")
+# async def predict_clinical(data: ClinicalInput):
+#     try:
 @app.post("/predict_clinical")
 async def predict_clinical(data: ClinicalInput):
+    import pandas as pd
+    import shap
+    import lime
+    import lime.lime_tabular
+    import dice_ml
+    import matplotlib.pyplot as plt
+    
+    clf, train_df = load_clinical_assets()
+    
     try:
         input_dict = data.model_dump()
         correct_order = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'ca', 'thal', 'slope']
