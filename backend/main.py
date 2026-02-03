@@ -55,6 +55,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.options("/{rest_of_path:path}")
+async def preflight_handler(rest_of_path: str):
+    return {}
+
 device = torch.device("cpu")
 model = None
 clinical_model = None
