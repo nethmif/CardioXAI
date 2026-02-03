@@ -11,6 +11,7 @@ import base64
 from xai_helper import generate_heatmaps
 import matplotlib
 matplotlib.use('Agg')
+matplotlib.font_manager._get_fontconfig_fonts.cache_clear()
 import matplotlib.pyplot as plt
 import joblib
 import pandas as pd
