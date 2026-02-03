@@ -225,10 +225,14 @@ async def predict_clinical(data: ClinicalInput):
             cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
             def force_float(val):
                 try:
+                    if isinstance(val, (list, np.ndarray)):
+                        return float(val[0])
                     clean_str = str(val).replace('[', '').replace(']', '').replace("'", "").strip()
                     return float(clean_str)
-                except (ValueError, TypeError):
-                    return val 
+                except (ValueError, TypeError, IndexError):
+                    return 0.0
+            if 'target' in cf_df.columns:
+                cf_df = cf_df.drop(columns=['target'])
             for col in cf_df.columns:
                 cf_df[col] = cf_df[col].apply(force_float)
             dice_data = cf_df.to_dict(orient='records')
