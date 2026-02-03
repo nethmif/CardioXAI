@@ -215,36 +215,39 @@ async def predict_clinical(data: ClinicalInput):
         #     print(f"DiCE failed: {e}")
         #     dice_data = None
 
+        dice_data = None
         try:
+            print(f"DEBUG: Input Data Types: {df.dtypes}")
+            # Create a copy of the training data with clean types
+            dice_df_clean = dice_train_df[correct_order + ['target']].copy()
+            for col in dice_df_clean.columns:
+                dice_df_clean[col] = pd.to_numeric(dice_df_clean[col], errors='coerce')
+            dice_df_clean = dice_df_clean.dropna()
+
+            d = dice_ml.Data(dataframe=dice_df_clean, continuous_features=continuous_features, outcome_name='target')
+            m = dice_ml.Model(model=clinical_model, backend="sklearn") # Removed the Wrapper for a moment to test
+            exp = dice_ml.Dice(d, m, method="random")
+            
+            target_class = 0 if prediction == 1 else 1
+            
             dice_exp = exp.generate_counterfactuals(
                 df, 
                 total_CFs=3, 
                 desired_class=target_class,
                 features_to_vary=modifiable_features
             )
-            cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
-            def force_float_robust(val):
-                if isinstance(val, (int, float, np.number)):
-                    return float(val)                
-                if isinstance(val, (list, np.ndarray)):
-                    try:
-                        return float(val[0])
-                    except:
-                        return 0.0                
-                val_str = str(val).strip()
-                clean_str = val_str.replace('[', '').replace(']', '').replace("'", "").replace('"', '')
-                try:
-                    return float(clean_str)
-                except ValueError:
-                    return 0.0
-            for col in cf_df.columns:
-                cf_df[col] = cf_df[col].apply(force_float_robust)
-            if 'target' in cf_df.columns:
-                cf_df = cf_df.drop(columns=['target'])
-            dice_data = cf_df.to_dict(orient='records')
-        except Exception as e:
-            print(f"DiCE Error details: {str(e)}")
-            dice_data = None
+            
+            # Convert to list of dicts safely
+            raw_cf_df = dice_exp.cf_examples_list[0].final_cfs_df
+            print(f"DEBUG: DiCE Output Raw: {raw_cf_df.iloc[0].to_dict()}")
+            
+            # THE FIX: Convert the entire dataframe to standard floats immediately
+            # this clears out any weird numpy objects or bracketed strings
+            dice_data = raw_cf_df.applymap(lambda x: float(str(x).replace('[','').replace(']','')) if isinstance(x, str) else float(x)).to_dict(orient='records')
+
+        except Exception as dice_err:
+            print(f"CRITICAL: DiCE failed but bypass enabled: {dice_err}")
+            dice_data = [] # Return empty list so frontend doesn't crash
 
         llm_report = get_llm_advice(prediction, prob, input_dict, top_drivers_readable)
 
