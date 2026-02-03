@@ -4,6 +4,8 @@ import axios from 'axios';
 import ClinicalResultsView from './ClinicalResultsView';
 
 const PredictClinical = () => {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
   const [formData, setFormData] = useState({
     age: '', sex: '1', cp: '0', trestbps: '', chol: '', fbs: '0',
     restecg: '0', thalach: '', exang: '0', oldpeak: '', slope: '0', ca: '0', thal: '1'
@@ -35,7 +37,8 @@ const PredictClinical = () => {
         submissionData[key] = Number(formData[key]);
       });
 
-      const res = await axios.post('http://localhost:8000/predict_clinical', submissionData);
+      // const res = await axios.post('http://localhost:8000/predict_clinical', submissionData);
+      const res = await axios.post(`${API_URL}/predict_clinical`, submissionData);
       console.log(res.data);
       setResult(res.data);
     } catch (err) {

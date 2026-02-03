@@ -4,6 +4,8 @@ import axios from 'axios';
 import jsPDF from 'jspdf';
 
 const PredictECG = ({ isSideBySide }) => {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
   const [stage, setStage] = useState('upload'); 
   const [file, setFile] = useState(null);
   const [fileDetails, setFileDetails] = useState(null);
@@ -32,7 +34,7 @@ const PredictECG = ({ isSideBySide }) => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await axios.post('http://localhost:8000/predict', formData);
+      const response = await axios.post(`${API_URL}/predict`, formData);
       setResult(response.data);
       setStage('result');
     } catch (err) {

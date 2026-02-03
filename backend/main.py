@@ -34,6 +34,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# origins = [
+#     "http://localhost:3000",                  
+#     "VERCEL_URL", 
+# ]
+
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
 model = HierarchicalECGModel().to(device)
@@ -388,6 +401,11 @@ def get_dice_explanation(dice_scenarios, prediction):
     )
     return response.choices[0].message.content
 
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="127.0.0.1", port=8000)
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
