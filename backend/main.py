@@ -784,18 +784,33 @@ async def predict_clinical(data: ClinicalInput):
         prob = float(proba[0][1])
         prediction = int(np.argmax(proba[0]))
 
-
-        xgb_comp = clinical_model.named_estimators_['xgb']
-        try:
-            base_score = xgb_comp.get_booster().attr("base_score")
-            if base_score is not None and "[" in str(base_score):
-                clean_score = str(base_score).replace('[', '').replace(']', '')
-                xgb_comp.get_booster().set_attr(base_score=clean_score)
-        except Exception as e:
-            print(f"SHAP Hotfix failed (safe to ignore if SHAP works): {e}")
-        explainer = shap.TreeExplainer(xgb_comp)
+        # xgb_comp = clinical_model.named_estimators_['xgb']
+        # try:
+        #     base_score = xgb_comp.get_booster().attr("base_score")
+        #     if base_score is not None and "[" in str(base_score):
+        #         clean_score = str(base_score).replace('[', '').replace(']', '')
+        #         xgb_comp.get_booster().set_attr(base_score=clean_score)
+        # except Exception as e:
+        #     print(f"SHAP Hotfix failed (safe to ignore if SHAP works): {e}")
+        # explainer = shap.TreeExplainer(xgb_comp)
         
-        shap_vals = explainer.shap_values(df.values) 
+        # shap_vals = explainer.shap_values(df.values) 
+        # --- START ---
+        xgb_comp = clinical_model.named_estimators_['xgb']        
+        try:
+            b_score = xgb_comp.get_booster().attr("base_score")
+            if b_score is not None:
+                clean_b_score = str(b_score).replace('[', '').replace(']', '')
+                xgb_comp.get_booster().set_attr(base_score=clean_b_score)
+        except Exception as e:
+            print(f"Metadata cleaning failed: {e}")
+        try:
+            explainer = shap.TreeExplainer(xgb_comp)
+        except Exception:
+            explainer = shap.Explainer(xgb_comp)
+        # --- END ---
+        
+        shap_vals = explainer.shap_values(df.values)
         
         # feature_importance = dict(zip(correct_order, shap_vals[0]))
         feature_importance = {
