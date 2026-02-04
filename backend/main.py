@@ -770,7 +770,15 @@ async def predict_clinical(data: ClinicalInput):
         # raw_prob = clinical_model.predict_proba(df)[0][1]
         # prob = safe_float(raw_prob)
         # prediction = int(clinical_model.predict(df)[0])
+        print("DEBUG: DF dtypes")
+        print(df.dtypes)
+        print("DEBUG: DF head")
+        print(df.head())
+
         proba = clinical_model.predict_proba(df)
+        proba_raw = clinical_model.predict_proba(df)
+        print("DEBUG: raw predict_proba output")
+        print(proba_raw, type(proba_raw), proba_raw.dtype)
         proba = np.vectorize(safe_float)(proba)
         prob = float(proba[0][1])
         prediction = int(np.argmax(proba[0]))
