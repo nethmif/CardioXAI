@@ -60,11 +60,9 @@
 
 // export default DiceTable;
 
-import React from 'react';
-import { Alert } from 'react-bootstrap';
-import { CLINICAL_MAPPING } from './constants';
 const DiceTable = ({ diceData }) => {
-  if (!diceData || diceData === "EMPTY" || diceData.length === 0) {
+  // 1. Improved Guard Clause
+  if (!diceData || diceData === "EMPTY" || (Array.isArray(diceData) && diceData.length === 0)) {
     return (
       <div className="text-center py-3 text-muted">
         <p className="small mb-0">No clinically achievable scenarios found.</p>
@@ -72,23 +70,28 @@ const DiceTable = ({ diceData }) => {
     );
   }
 
+  // 2. Hardened Parser to strip brackets if they still appear
   const parseVal = (val) => {
-    if (typeof val === 'string' && val.includes('[')) {
-      return parseFloat(val.replace(/[\[\]']/g, ''));
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'string') {
+        // Removes brackets [ ] and quotes ' " then parses
+        const clean = val.replace(/[\[\]'"]/g, '');
+        return parseFloat(clean);
     }
     return val;
   };
 
   try {
-    const data = diceData;
+    // 3. Ensure data is an array (handles if it arrives as string or object)
+    const data = typeof diceData === 'string' ? JSON.parse(diceData) : diceData;
     const headers = Object.keys(data[0]);
 
     return (
       <div className="table-responsive mt-3">
         <table className="table table-bordered table-sm align-middle">
-          <thead className="table-light">
-            <tr>
-              {headers.map(key => (
+           <thead className="table-light">
+             <tr>
+               {headers.map(key => (
                 <th key={key} className="small text-nowrap">
                   {CLINICAL_MAPPING[key]?.label || key}
                 </th>
@@ -106,7 +109,7 @@ const DiceTable = ({ diceData }) => {
                   if (mapping?.map) {
                     displayVal = mapping.map[Math.round(rawVal)] || rawVal;
                   } else if (typeof rawVal === 'number') {
-                    displayVal = rawVal.toFixed(1);
+                    displayVal = isNaN(rawVal) ? "N/A" : rawVal.toFixed(1);
                   }
 
                   return (
@@ -123,6 +126,6 @@ const DiceTable = ({ diceData }) => {
         </table>
       </div>
     );
-  } catch (e) { return <Alert variant="warning">Data Error</Alert>; }
+  } catch (e) { return <Alert variant="warning">Format Error</Alert>; }
 };
 export default DiceTable;
