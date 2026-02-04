@@ -39,7 +39,7 @@ const PredictClinical = () => {
 
       // const res = await axios.post('http://localhost:8000/predict_clinical', submissionData);
       const res = await axios.post(`${API_URL}/predict_clinical`, submissionData);
-      console.log(res.data);
+      console.log("Predict Clinical res",res.data);
       setResult(res.data);
     } catch (err) {
       console.error(err);
