@@ -637,6 +637,17 @@ checkpoint = torch.load('checkpoints/best_hierarchical_model.pth', map_location=
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 
+def safe_float(x):
+    try:
+        if isinstance(x, (list, tuple, np.ndarray)):
+            return float(x[0])
+        if isinstance(x, str):
+            return float(x.replace('[','').replace(']',''))
+        return float(x)
+    except:
+        return 0.0
+
+
 @app.get("/")
 def read_root():
     return {"message": "CardioXAI API is running"}
@@ -753,7 +764,9 @@ async def predict_clinical(data: ClinicalInput):
 
         dice_df_clean = dice_train_df[correct_order + ['target']].apply(pd.to_numeric, errors='coerce').dropna().astype(np.float32)
 
-        prob = clinical_model.predict_proba(df)[0][1]
+        # prob = clinical_model.predict_proba(df)[0][1]
+        raw_prob = clinical_model.predict_proba(df)[0][1]
+        prob = safe_float(raw_prob)
         prediction = int(clinical_model.predict(df)[0])
 
         xgb_comp = clinical_model.named_estimators_['xgb']
@@ -763,9 +776,10 @@ async def predict_clinical(data: ClinicalInput):
         
         # feature_importance = dict(zip(correct_order, shap_vals[0]))
         feature_importance = {
-            f: float(shap_vals[0][i]) 
+            f: safe_float(shap_vals[0][i])
             for i, f in enumerate(correct_order)
         }
+
         top_drivers_raw = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
         top_drivers_readable = [FEATURE_NAMES_DISPLAY.get(d[0], d[0]) for d in top_drivers_raw]
 
@@ -847,12 +861,12 @@ async def predict_clinical(data: ClinicalInput):
             #     cf_df[col] = pd.to_numeric(cf_df[col].to_numpy().flatten(), errors='coerce')
             # dice_data = cf_df.to_dict(orient='records')
             cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
+
             for col in cf_df.columns:
-                cf_df[col] = cf_df[col].apply(
-                    lambda x: float(str(x).replace('[','').replace(']','')) 
-                    if pd.notnull(x) else x
-                )
-            dice_data = cf_df.to_dict(orient='records')
+                cf_df[col] = cf_df[col].apply(safe_float)
+
+            dice_data = cf_df.to_dict(orient="records")
+
         except Exception as e:
             print(f"DiCE failed: {e}")
             dice_data = "EMPTY" 
