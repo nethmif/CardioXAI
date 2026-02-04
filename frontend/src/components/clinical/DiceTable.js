@@ -60,6 +60,10 @@
 
 // export default DiceTable;
 
+import React from 'react';
+import { Alert } from 'react-bootstrap';
+import { CLINICAL_MAPPING } from './constants';
+
 const DiceTable = ({ diceData }) => {
   // 1. Improved Guard Clause
   if (!diceData || diceData === "EMPTY" || (Array.isArray(diceData) && diceData.length === 0)) {
