@@ -760,7 +760,11 @@ async def predict_clinical(data: ClinicalInput):
         
         shap_vals = explainer.shap_values(df.values) 
         
-        feature_importance = dict(zip(correct_order, shap_vals[0]))
+        # feature_importance = dict(zip(correct_order, shap_vals[0]))
+        feature_importance = {
+            f: float(shap_vals[0][i]) 
+            for i, f in enumerate(correct_order)
+        }
         top_drivers_raw = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
         top_drivers_readable = [FEATURE_NAMES_DISPLAY.get(d[0], d[0]) for d in top_drivers_raw]
 
@@ -797,19 +801,35 @@ async def predict_clinical(data: ClinicalInput):
         # except Exception as e:
         #     print(f"DiCE failed: {e}")
         #     dice_data = None
-        class ModelWrapper:
-            def __init__(self, model): 
-                self.model = model
-            def predict_proba(self, X):
-                if isinstance(X, pd.DataFrame):
-                    X = X.astype(np.float32)
-                probs = self.model.predict_proba(X)
-                return np.array(probs, dtype=np.float64)
+        # class ModelWrapper:
+        #     def __init__(self, model): 
+        #         self.model = model
+        #     def predict_proba(self, X):
+        #         if isinstance(X, pd.DataFrame):
+        #             X = X.astype(np.float32)
+        #         probs = self.model.predict_proba(X)
+        #         return np.array(probs, dtype=np.float64)
             
+        #     def predict(self, X):
+        #         if isinstance(X, pd.DataFrame):
+        #             X = X.astype(np.float32)
+        #         return self.model.predict(X)
+        class ModelWrapper:
+            def __init__(self, model):
+                self.model = model
+                self._estimator_type = "classifier"
+                self.classes_ = np.array([0, 1])
+
+            def predict_proba(self, X):
+                if isinstance(X, np.ndarray):
+                    X = pd.DataFrame(X, columns=correct_order)
+                return self.model.predict_proba(X.astype(np.float32))
+
             def predict(self, X):
-                if isinstance(X, pd.DataFrame):
-                    X = X.astype(np.float32)
-                return self.model.predict(X)
+                if isinstance(X, np.ndarray):
+                    X = pd.DataFrame(X, columns=correct_order)
+                return self.model.predict(X.astype(np.float32))
+
 
         m = dice_ml.Model(model=ModelWrapper(clinical_model), backend="sklearn")
         exp = dice_ml.Dice(d, m, method="random")
@@ -821,9 +841,16 @@ async def predict_clinical(data: ClinicalInput):
                 desired_class=target_class,
                 features_to_vary=modifiable_features
             )
-            cf_df = dice_exp.cf_examples_list[0].final_cfs_df
+            # cf_df = dice_exp.cf_examples_list[0].final_cfs_df
+            # for col in cf_df.columns:
+            #     cf_df[col] = pd.to_numeric(cf_df[col].to_numpy().flatten(), errors='coerce')
+            # dice_data = cf_df.to_dict(orient='records')
+            cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
             for col in cf_df.columns:
-                cf_df[col] = pd.to_numeric(cf_df[col].to_numpy().flatten(), errors='coerce')
+                cf_df[col] = cf_df[col].apply(
+                    lambda x: float(str(x).replace('[','').replace(']','')) 
+                    if pd.notnull(x) else x
+                )
             dice_data = cf_df.to_dict(orient='records')
         except Exception as e:
             print(f"DiCE failed: {e}")

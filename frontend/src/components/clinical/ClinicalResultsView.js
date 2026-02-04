@@ -80,6 +80,12 @@ const ClinicalResultsView = ({ result, reset }) => {
 
   const renderTooltip = (text) => <Tooltip id="button-tooltip">{text}</Tooltip>;
 
+  const prob = Number(result?.probability);
+
+  const riskPercent = Number.isFinite(prob)
+    ? (prob * 100).toFixed(1)
+    : "N/A";
+
   return (
     <div className="animate__animated animate__fadeIn">
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -108,7 +114,8 @@ const ClinicalResultsView = ({ result, reset }) => {
           <Col md={8}>
             <h5 className="text-uppercase mb-1 small fw-bold" style={{opacity: 0.8}}>Risk Assessment</h5>
             <h2 className="m-0 fw-bold">
-                {(result.probability * 100).toFixed(1)}% — {result.prediction === 1 ? "High Risk Detected" : "Low Risk / Healthy"}
+                {/* {(result.probability * 100).toFixed(1)}% — {result.prediction === 1 ? "High Risk Detected" : "Low Risk / Healthy"} */}
+                {riskPercent}% — {result.prediction === 1 ? "High Risk" : "Low Risk / Healthy"}
             </h2>
           </Col>
         </Row>
