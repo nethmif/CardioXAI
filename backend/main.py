@@ -795,22 +795,31 @@ async def predict_clinical(data: ClinicalInput):
         # explainer = shap.TreeExplainer(xgb_comp)
         
         # shap_vals = explainer.shap_values(df.values) 
-        # --- START ---
-        xgb_comp = clinical_model.named_estimators_['xgb']        
+
+        # --- SHAP FIX ---
+        xgb_comp = clinical_model.named_estimators_['xgb']
         try:
             b_score = xgb_comp.get_booster().attr("base_score")
-            if b_score is not None:
-                clean_b_score = str(b_score).replace('[', '').replace(']', '')
-                xgb_comp.get_booster().set_attr(base_score=clean_b_score)
-        except Exception as e:
-            print(f"Metadata cleaning failed: {e}")
-        try:
+            if b_score and "[" in str(b_score):
+                clean_score = str(b_score).replace('[', '').replace(']', '')
+                xgb_comp.get_booster().set_attr(base_score=clean_score)
+            
             explainer = shap.TreeExplainer(xgb_comp)
-        except Exception:
-            explainer = shap.Explainer(xgb_comp)
-        # --- END ---
-        
-        shap_vals = explainer.shap_values(df.values)
+            shap_vals = explainer.shap_values(df)
+            expected_value = explainer.expected_value
+        except Exception as e:
+            print(f"TreeExplainer failed, using KernelExplainer fallback: {e}")
+            background_data = dice_df_clean[correct_order].sample(n=min(20, len(dice_df_clean)))
+            explainer = shap.KernelExplainer(xgb_comp.predict_proba, background_data)
+            shap_vals = explainer.shap_values(df)
+            if isinstance(shap_vals, list):
+                shap_vals = shap_vals[prediction]
+            expected_value = explainer.expected_value[prediction] if isinstance(explainer.expected_value, (list, np.ndarray)) else explainer.expected_value
+        if isinstance(shap_vals, list):
+            final_shap_for_plot = shap_vals[0]
+        else:
+            final_shap_for_plot = shap_vals
+        # --- END SHAP FIX ---
         
         # feature_importance = dict(zip(correct_order, shap_vals[0]))
         feature_importance = {
