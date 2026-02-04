@@ -774,18 +774,46 @@ async def predict_clinical(data: ClinicalInput):
         
         d = dice_ml.Data(dataframe=dice_df_clean, continuous_features=continuous_features, outcome_name='target')
         
+        # class ModelWrapper:
+        #     def __init__(self, model): self.model = model
+        #     def predict_proba(self, X):
+        #         if isinstance(X, pd.DataFrame):
+        #             return self.model.predict_proba(X.astype(np.float32))
+        #         return self.model.predict_proba(X.astype(np.float32))
+
+        # m = dice_ml.Model(model=ModelWrapper(clinical_model), backend="sklearn")
+        # exp = dice_ml.Dice(d, m, method="random")
+        
+        # target_class = 0 if prediction == 1 else 1
+        
+        # try:
+        #     dice_exp = exp.generate_counterfactuals(
+        #         df, 
+        #         total_CFs=3, 
+        #         desired_class=target_class,
+        #         features_to_vary=modifiable_features
+        #     )
+        #     dice_data = dice_exp.cf_examples_list[0].final_cfs_df.to_json(orient='records')
+        # except Exception as e:
+        #     print(f"DiCE failed: {e}")
+        #     dice_data = None
         class ModelWrapper:
-            def __init__(self, model): self.model = model
+            def __init__(self, model): 
+                self.model = model
             def predict_proba(self, X):
                 if isinstance(X, pd.DataFrame):
-                    return self.model.predict_proba(X.astype(np.float32))
-                return self.model.predict_proba(X.astype(np.float32))
+                    X = X.astype(np.float32)
+                probs = self.model.predict_proba(X)
+                return np.array(probs, dtype=np.float64)
+            
+            def predict(self, X):
+                if isinstance(X, pd.DataFrame):
+                    X = X.astype(np.float32)
+                return self.model.predict(X)
 
         m = dice_ml.Model(model=ModelWrapper(clinical_model), backend="sklearn")
         exp = dice_ml.Dice(d, m, method="random")
-        
         target_class = 0 if prediction == 1 else 1
-        
         try:
             dice_exp = exp.generate_counterfactuals(
                 df, 
@@ -793,10 +821,13 @@ async def predict_clinical(data: ClinicalInput):
                 desired_class=target_class,
                 features_to_vary=modifiable_features
             )
-            dice_data = dice_exp.cf_examples_list[0].final_cfs_df.to_json(orient='records')
+            cf_df = dice_exp.cf_examples_list[0].final_cfs_df
+            for col in cf_df.columns:
+                cf_df[col] = pd.to_numeric(cf_df[col].to_numpy().flatten(), errors='coerce')
+            dice_data = cf_df.to_dict(orient='records')
         except Exception as e:
             print(f"DiCE failed: {e}")
-            dice_data = None
+            dice_data = "EMPTY" 
 
         llm_report = get_llm_advice(prediction, prob, input_dict, top_drivers_readable)
 
