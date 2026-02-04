@@ -284,18 +284,33 @@ class ClinicalInput(BaseModel):
 #         import traceback
 #         print(traceback.format_exc()) 
 #         return {"error": str(e)}
+# @app.post("/predict_clinical")
+# async def predict_clinical(data: ClinicalInput):
+#     try:
+#         input_dict = data.model_dump()
+#         correct_order = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'ca', 'thal', 'slope']
+        
+#         # Prepare input
+#         raw_values = np.array([[float(input_dict[k]) for k in correct_order]], dtype=np.float32)
+#         df = pd.DataFrame(raw_values, columns=correct_order).astype(np.float32)
+
+#         # Basic Prediction
+#         prob = float(clinical_model.predict_proba(df)[0][1])
+#         prediction = int(clinical_model.predict(df)[0])
 @app.post("/predict_clinical")
 async def predict_clinical(data: ClinicalInput):
     try:
         input_dict = data.model_dump()
         correct_order = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'ca', 'thal', 'slope']
-        
-        # Prepare input
+                
         raw_values = np.array([[float(input_dict[k]) for k in correct_order]], dtype=np.float32)
         df = pd.DataFrame(raw_values, columns=correct_order).astype(np.float32)
-
-        # Basic Prediction
-        prob = float(clinical_model.predict_proba(df)[0][1])
+        
+        # FIX 1: Robust Probability Extraction
+        raw_prob = clinical_model.predict_proba(df)[0][1]
+        # Clean the probability if it's trapped in a string/list
+        prob = float(str(raw_prob).replace('[', '').replace(']', ''))
+        
         prediction = int(clinical_model.predict(df)[0])
 
         # SHAP Analysis
@@ -314,49 +329,67 @@ async def predict_clinical(data: ClinicalInput):
 
         # --- ROBUST DICE SECTION ---
         dice_data = []
-        try:
-            continuous_features = ['age', 'trestbps', 'chol', 'thalach', 'oldpeak']
-            modifiable_features = ['trestbps', 'chol', 'thalach', 'fbs', 'exang', 'oldpeak']
+        # try:
+        #     continuous_features = ['age', 'trestbps', 'chol', 'thalach', 'oldpeak']
+        #     modifiable_features = ['trestbps', 'chol', 'thalach', 'fbs', 'exang', 'oldpeak']
             
-            # Clean training data for DiCE
-            dice_df_clean = dice_train_df[correct_order + ['target']].copy()
-            for col in dice_df_clean.columns:
-                dice_df_clean[col] = pd.to_numeric(dice_df_clean[col], errors='coerce')
-            dice_df_clean = dice_df_clean.dropna().astype(np.float32)
+        #     # Clean training data for DiCE
+        #     dice_df_clean = dice_train_df[correct_order + ['target']].copy()
+        #     for col in dice_df_clean.columns:
+        #         dice_df_clean[col] = pd.to_numeric(dice_df_clean[col], errors='coerce')
+        #     dice_df_clean = dice_df_clean.dropna().astype(np.float32)
 
-            d = dice_ml.Data(dataframe=dice_df_clean, continuous_features=continuous_features, outcome_name='target')
-            m = dice_ml.Model(model=clinical_model, backend="sklearn")
-            exp = dice_ml.Dice(d, m, method="random")
+        #     d = dice_ml.Data(dataframe=dice_df_clean, continuous_features=continuous_features, outcome_name='target')
+        #     m = dice_ml.Model(model=clinical_model, backend="sklearn")
+        #     exp = dice_ml.Dice(d, m, method="random")
             
-            target_class = 0 if prediction == 1 else 1
+        #     target_class = 0 if prediction == 1 else 1
+        #     dice_exp = exp.generate_counterfactuals(
+        #         df, total_CFs=3, desired_class=target_class,
+        #         features_to_vary=modifiable_features
+        #     )
+            
+        #     # THE CRITICAL CLEANING STEP
+        #     raw_cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
+            
+        #     def scrub_value(val):
+        #         """Removes brackets and handles list-type strings like [0.49]"""
+        #         s = str(val).replace('[', '').replace(']', '').replace("'", "").strip()
+        #         try:
+        #             return float(s)
+        #         except:
+        #             return 0.0
+
+        #     # Apply cleaning to every cell to ensure no bracketed strings remain
+        #     cleaned_cf_df = raw_cf_df.applymap(scrub_value)
+            
+        #     # If a 'target' column exists and it's still weird, just drop it
+        #     if 'target' in cleaned_cf_df.columns:
+        #         cleaned_cf_df = cleaned_cf_df.drop(columns=['target'])
+                
+        #     dice_data = cleaned_cf_df.to_dict(orient='records')
+
+        # except Exception as dice_err:
+        #     print(f"DiCE handled error: {dice_err}")
+        #     dice_data = []
+        try:
             dice_exp = exp.generate_counterfactuals(
-                df, total_CFs=3, desired_class=target_class,
+                df, 
+                total_CFs=3, 
+                desired_class=target_class,
                 features_to_vary=modifiable_features
             )
+            cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
             
-            # THE CRITICAL CLEANING STEP
-            raw_cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
-            
-            def scrub_value(val):
-                """Removes brackets and handles list-type strings like [0.49]"""
-                s = str(val).replace('[', '').replace(']', '').replace("'", "").strip()
-                try:
-                    return float(s)
-                except:
-                    return 0.0
-
-            # Apply cleaning to every cell to ensure no bracketed strings remain
-            cleaned_cf_df = raw_cf_df.applymap(scrub_value)
-            
-            # If a 'target' column exists and it's still weird, just drop it
-            if 'target' in cleaned_cf_df.columns:
-                cleaned_cf_df = cleaned_cf_df.drop(columns=['target'])
-                
-            dice_data = cleaned_cf_df.to_dict(orient='records')
-
+            for col in cf_df.columns:
+                cf_df[col] = cf_df[col].apply(
+                    lambda x: float(str(x).replace('[', '').replace(']', '').replace("'", "")) 
+                    if not isinstance(x, (int, float, np.number)) else x
+                )
+            dice_data = cf_df.to_dict(orient='records')
         except Exception as dice_err:
-            print(f"DiCE handled error: {dice_err}")
-            dice_data = []
+            print(f"DiCE Error: {dice_err}")
+            dice_data = [] # Fallback to empty list instead of None
 
         # LLM, Summary, and LIME (keep your existing logic for these)
         llm_report = get_llm_advice(prediction, prob, input_dict, top_drivers_readable)
@@ -391,8 +424,9 @@ async def predict_clinical(data: ClinicalInput):
 
     except Exception as e:
         import traceback
-        print(traceback.format_exc()) 
-        return {"error": str(e)}
+        error_msg = traceback.format_exc()
+        print(error_msg) 
+        return {"error": str(e)} 
 
 def get_llm_advice(prediction, probability, input_data, top_risk_drivers):
     """Generates a comprehensive, SHAP-anchored health report."""
