@@ -63,9 +63,7 @@
 import React from 'react';
 import { Alert } from 'react-bootstrap';
 import { CLINICAL_MAPPING } from './constants';
-
 const DiceTable = ({ diceData }) => {
-  // 1. Improved Guard Clause
   if (!diceData || diceData === "EMPTY" || (Array.isArray(diceData) && diceData.length === 0)) {
     return (
       <div className="text-center py-3 text-muted">
@@ -74,11 +72,9 @@ const DiceTable = ({ diceData }) => {
     );
   }
 
-  // 2. Hardened Parser to strip brackets if they still appear
   const parseVal = (val) => {
     if (val === null || val === undefined) return 0;
     if (typeof val === 'string') {
-        // Removes brackets [ ] and quotes ' " then parses
         const clean = val.replace(/[\[\]'"]/g, '');
         return parseFloat(clean);
     }
@@ -86,16 +82,15 @@ const DiceTable = ({ diceData }) => {
   };
 
   try {
-    // 3. Ensure data is an array (handles if it arrives as string or object)
-    const data = typeof diceData === 'string' ? JSON.parse(diceData) : diceData;
+    const data = diceData;
     const headers = Object.keys(data[0]);
 
     return (
       <div className="table-responsive mt-3">
         <table className="table table-bordered table-sm align-middle">
-           <thead className="table-light">
-             <tr>
-               {headers.map(key => (
+          <thead className="table-light">
+            <tr>
+              {headers.map(key => (
                 <th key={key} className="small text-nowrap">
                   {CLINICAL_MAPPING[key]?.label || key}
                 </th>
@@ -130,6 +125,6 @@ const DiceTable = ({ diceData }) => {
         </table>
       </div>
     );
-  } catch (e) { return <Alert variant="warning">Format Error</Alert>; }
+  } catch (e) { return <Alert variant="warning">Data Error</Alert>; }
 };
 export default DiceTable;
