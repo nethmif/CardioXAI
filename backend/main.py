@@ -158,99 +158,209 @@ class ClinicalInput(BaseModel):
     thal: float
     slope: float
 
+# @app.post("/predict_clinical")
+# async def predict_clinical(data: ClinicalInput):
+#     try:
+#         input_dict = data.model_dump()
+#         correct_order = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'ca', 'thal', 'slope']
+        
+#         raw_values = np.array([[float(input_dict[k]) for k in correct_order]], dtype=np.float32)
+#         df = pd.DataFrame(raw_values, columns=correct_order).astype(np.float32)
+
+#         dice_df_clean = dice_train_df[correct_order + ['target']].apply(pd.to_numeric, errors='coerce').dropna().astype(np.float32)
+
+#         prob = clinical_model.predict_proba(df)[0][1]
+#         prediction = int(clinical_model.predict(df)[0])
+
+#         xgb_comp = clinical_model.named_estimators_['xgb']
+#         explainer = shap.TreeExplainer(xgb_comp)
+        
+#         shap_vals = explainer.shap_values(df.values) 
+        
+#         feature_importance = dict(zip(correct_order, shap_vals[0]))
+#         top_drivers_raw = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
+#         top_drivers_readable = [FEATURE_NAMES_DISPLAY.get(d[0], d[0]) for d in top_drivers_raw]
+
+#         plt.figure(figsize=(20, 3))
+#         df_readable = df.rename(columns=FEATURE_NAMES_DISPLAY)
+#         shap.force_plot(explainer.expected_value, shap_vals[0], df_readable.iloc[0], matplotlib=True, show=False)
+#         shap_img = get_base64_plot()
+
+#         continuous_features = ['age', 'trestbps', 'chol', 'thalach', 'oldpeak']
+#         modifiable_features = ['trestbps', 'chol', 'thalach', 'fbs', 'exang', 'oldpeak']
+        
+#         d = dice_ml.Data(dataframe=dice_df_clean, continuous_features=continuous_features, outcome_name='target')
+        
+#         class ModelWrapper:
+#             def __init__(self, model): self.model = model
+#             def predict_proba(self, X):
+#                 if isinstance(X, pd.DataFrame):
+#                     return self.model.predict_proba(X.astype(np.float32))
+#                 return self.model.predict_proba(X.astype(np.float32))
+
+#         m = dice_ml.Model(model=ModelWrapper(clinical_model), backend="sklearn")
+#         exp = dice_ml.Dice(d, m, method="random")
+        
+#         target_class = 0 if prediction == 1 else 1
+        
+#         # try:
+#         #     dice_exp = exp.generate_counterfactuals(
+#         #         df, 
+#         #         total_CFs=3, 
+#         #         desired_class=target_class,
+#         #         features_to_vary=modifiable_features
+#         #     )
+#         #     dice_data = dice_exp.cf_examples_list[0].final_cfs_df.to_json(orient='records')
+#         # except Exception as e:
+#         #     print(f"DiCE failed: {e}")
+#         #     dice_data = None
+
+#         dice_data = None
+#         try:
+#             print(f"DEBUG: Input Data Types: {df.dtypes}")
+#             # Create a copy of the training data with clean types
+#             dice_df_clean = dice_train_df[correct_order + ['target']].copy()
+#             for col in dice_df_clean.columns:
+#                 dice_df_clean[col] = pd.to_numeric(dice_df_clean[col], errors='coerce')
+#             dice_df_clean = dice_df_clean.dropna()
+
+#             d = dice_ml.Data(dataframe=dice_df_clean, continuous_features=continuous_features, outcome_name='target')
+#             m = dice_ml.Model(model=clinical_model, backend="sklearn") # Removed the Wrapper for a moment to test
+#             exp = dice_ml.Dice(d, m, method="random")
+            
+#             target_class = 0 if prediction == 1 else 1
+            
+#             dice_exp = exp.generate_counterfactuals(
+#                 df, 
+#                 total_CFs=3, 
+#                 desired_class=target_class,
+#                 features_to_vary=modifiable_features
+#             )
+            
+#             # Convert to list of dicts safely
+#             raw_cf_df = dice_exp.cf_examples_list[0].final_cfs_df
+#             print(f"DEBUG: DiCE Output Raw: {raw_cf_df.iloc[0].to_dict()}")
+            
+#             # THE FIX: Convert the entire dataframe to standard floats immediately
+#             # this clears out any weird numpy objects or bracketed strings
+#             dice_data = raw_cf_df.applymap(lambda x: float(str(x).replace('[','').replace(']','')) if isinstance(x, str) else float(x)).to_dict(orient='records')
+
+#         except Exception as dice_err:
+#             print(f"CRITICAL: DiCE failed but bypass enabled: {dice_err}")
+#             dice_data = [] # Return empty list so frontend doesn't crash
+
+#         llm_report = get_llm_advice(prediction, prob, input_dict, top_drivers_readable)
+
+#         plt.figure(figsize=(10, 5))
+#         sample_data = dice_df_clean[correct_order].sample(n=min(50, len(dice_df_clean)))
+#         sample_shap = explainer.shap_values(sample_data.values)
+#         shap.summary_plot(sample_shap, sample_data.rename(columns=FEATURE_NAMES_DISPLAY), show=False)
+#         summary_img = get_base64_plot()
+
+#         lime_explainer = lime.lime_tabular.LimeTabularExplainer(
+#             training_data=dice_df_clean[correct_order].values,
+#             feature_names=[FEATURE_NAMES_DISPLAY.get(c, c) for c in correct_order],
+#             mode='classification'
+#         )
+#         predict_fn = lambda x: clinical_model.predict_proba(pd.DataFrame(x, columns=correct_order).astype(np.float32))
+#         exp_lime = lime_explainer.explain_instance(df.values[0], predict_fn, num_features=8)
+#         lime_img = get_base64_plot(exp_lime.as_pyplot_figure())
+
+#         return {
+#             "prediction": prediction,
+#             "probability": float(prob),
+#             "shap_plot": f"data:image/png;base64,{shap_img}",
+#             "shap_explanation": get_shap_explanation(top_drivers_readable, shap_vals[0].tolist()),
+#             "lime_plot": f"data:image/png;base64,{lime_img}",
+#             "lime_explanation": get_lime_explanation(exp_lime.as_list()),
+#             "summary_plot": f"data:image/png;base64,{summary_img}",
+#             # "summary_explanation" : get_summary_explanation(top_drivers_readable),
+#             "dice_data": dice_data,
+#             "dice_explanation": get_dice_explanation(dice_data, prediction),
+#             "llm_report": llm_report
+#         }
+
+#     except Exception as e:
+#         import traceback
+#         print(traceback.format_exc()) 
+#         return {"error": str(e)}
 @app.post("/predict_clinical")
 async def predict_clinical(data: ClinicalInput):
     try:
         input_dict = data.model_dump()
         correct_order = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'ca', 'thal', 'slope']
         
+        # Prepare input
         raw_values = np.array([[float(input_dict[k]) for k in correct_order]], dtype=np.float32)
         df = pd.DataFrame(raw_values, columns=correct_order).astype(np.float32)
 
-        dice_df_clean = dice_train_df[correct_order + ['target']].apply(pd.to_numeric, errors='coerce').dropna().astype(np.float32)
-
-        prob = clinical_model.predict_proba(df)[0][1]
+        # Basic Prediction
+        prob = float(clinical_model.predict_proba(df)[0][1])
         prediction = int(clinical_model.predict(df)[0])
 
+        # SHAP Analysis
         xgb_comp = clinical_model.named_estimators_['xgb']
         explainer = shap.TreeExplainer(xgb_comp)
-        
         shap_vals = explainer.shap_values(df.values) 
         
         feature_importance = dict(zip(correct_order, shap_vals[0]))
         top_drivers_raw = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
         top_drivers_readable = [FEATURE_NAMES_DISPLAY.get(d[0], d[0]) for d in top_drivers_raw]
 
+        # SHAP Plot
         plt.figure(figsize=(20, 3))
-        df_readable = df.rename(columns=FEATURE_NAMES_DISPLAY)
-        shap.force_plot(explainer.expected_value, shap_vals[0], df_readable.iloc[0], matplotlib=True, show=False)
+        shap.force_plot(explainer.expected_value, shap_vals[0], df.iloc[0], matplotlib=True, show=False)
         shap_img = get_base64_plot()
 
-        continuous_features = ['age', 'trestbps', 'chol', 'thalach', 'oldpeak']
-        modifiable_features = ['trestbps', 'chol', 'thalach', 'fbs', 'exang', 'oldpeak']
-        
-        d = dice_ml.Data(dataframe=dice_df_clean, continuous_features=continuous_features, outcome_name='target')
-        
-        class ModelWrapper:
-            def __init__(self, model): self.model = model
-            def predict_proba(self, X):
-                if isinstance(X, pd.DataFrame):
-                    return self.model.predict_proba(X.astype(np.float32))
-                return self.model.predict_proba(X.astype(np.float32))
-
-        m = dice_ml.Model(model=ModelWrapper(clinical_model), backend="sklearn")
-        exp = dice_ml.Dice(d, m, method="random")
-        
-        target_class = 0 if prediction == 1 else 1
-        
-        # try:
-        #     dice_exp = exp.generate_counterfactuals(
-        #         df, 
-        #         total_CFs=3, 
-        #         desired_class=target_class,
-        #         features_to_vary=modifiable_features
-        #     )
-        #     dice_data = dice_exp.cf_examples_list[0].final_cfs_df.to_json(orient='records')
-        # except Exception as e:
-        #     print(f"DiCE failed: {e}")
-        #     dice_data = None
-
-        dice_data = None
+        # --- ROBUST DICE SECTION ---
+        dice_data = []
         try:
-            print(f"DEBUG: Input Data Types: {df.dtypes}")
-            # Create a copy of the training data with clean types
+            continuous_features = ['age', 'trestbps', 'chol', 'thalach', 'oldpeak']
+            modifiable_features = ['trestbps', 'chol', 'thalach', 'fbs', 'exang', 'oldpeak']
+            
+            # Clean training data for DiCE
             dice_df_clean = dice_train_df[correct_order + ['target']].copy()
             for col in dice_df_clean.columns:
                 dice_df_clean[col] = pd.to_numeric(dice_df_clean[col], errors='coerce')
-            dice_df_clean = dice_df_clean.dropna()
+            dice_df_clean = dice_df_clean.dropna().astype(np.float32)
 
             d = dice_ml.Data(dataframe=dice_df_clean, continuous_features=continuous_features, outcome_name='target')
-            m = dice_ml.Model(model=clinical_model, backend="sklearn") # Removed the Wrapper for a moment to test
+            m = dice_ml.Model(model=clinical_model, backend="sklearn")
             exp = dice_ml.Dice(d, m, method="random")
             
             target_class = 0 if prediction == 1 else 1
-            
             dice_exp = exp.generate_counterfactuals(
-                df, 
-                total_CFs=3, 
-                desired_class=target_class,
+                df, total_CFs=3, desired_class=target_class,
                 features_to_vary=modifiable_features
             )
             
-            # Convert to list of dicts safely
-            raw_cf_df = dice_exp.cf_examples_list[0].final_cfs_df
-            print(f"DEBUG: DiCE Output Raw: {raw_cf_df.iloc[0].to_dict()}")
+            # THE CRITICAL CLEANING STEP
+            raw_cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
             
-            # THE FIX: Convert the entire dataframe to standard floats immediately
-            # this clears out any weird numpy objects or bracketed strings
-            dice_data = raw_cf_df.applymap(lambda x: float(str(x).replace('[','').replace(']','')) if isinstance(x, str) else float(x)).to_dict(orient='records')
+            def scrub_value(val):
+                """Removes brackets and handles list-type strings like [0.49]"""
+                s = str(val).replace('[', '').replace(']', '').replace("'", "").strip()
+                try:
+                    return float(s)
+                except:
+                    return 0.0
+
+            # Apply cleaning to every cell to ensure no bracketed strings remain
+            cleaned_cf_df = raw_cf_df.applymap(scrub_value)
+            
+            # If a 'target' column exists and it's still weird, just drop it
+            if 'target' in cleaned_cf_df.columns:
+                cleaned_cf_df = cleaned_cf_df.drop(columns=['target'])
+                
+            dice_data = cleaned_cf_df.to_dict(orient='records')
 
         except Exception as dice_err:
-            print(f"CRITICAL: DiCE failed but bypass enabled: {dice_err}")
-            dice_data = [] # Return empty list so frontend doesn't crash
+            print(f"DiCE handled error: {dice_err}")
+            dice_data = []
 
+        # LLM, Summary, and LIME (keep your existing logic for these)
         llm_report = get_llm_advice(prediction, prob, input_dict, top_drivers_readable)
-
+        
         plt.figure(figsize=(10, 5))
         sample_data = dice_df_clean[correct_order].sample(n=min(50, len(dice_df_clean)))
         sample_shap = explainer.shap_values(sample_data.values)
@@ -268,13 +378,12 @@ async def predict_clinical(data: ClinicalInput):
 
         return {
             "prediction": prediction,
-            "probability": float(prob),
+            "probability": prob,
             "shap_plot": f"data:image/png;base64,{shap_img}",
             "shap_explanation": get_shap_explanation(top_drivers_readable, shap_vals[0].tolist()),
             "lime_plot": f"data:image/png;base64,{lime_img}",
             "lime_explanation": get_lime_explanation(exp_lime.as_list()),
             "summary_plot": f"data:image/png;base64,{summary_img}",
-            # "summary_explanation" : get_summary_explanation(top_drivers_readable),
             "dice_data": dice_data,
             "dice_explanation": get_dice_explanation(dice_data, prediction),
             "llm_report": llm_report
