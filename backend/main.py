@@ -796,8 +796,10 @@ async def predict_clinical(data: ClinicalInput):
         
         # shap_vals = explainer.shap_values(df.values) 
 
-        # --- SHAP FIX ---
+        # --- ROBUST SHAP FIX (Lambda Version) ---
         xgb_comp = clinical_model.named_estimators_['xgb']
+        predict_fn = lambda x: xgb_comp.predict_proba(pd.DataFrame(x, columns=correct_order).astype(np.float32))
+
         try:
             b_score = xgb_comp.get_booster().attr("base_score")
             if b_score and "[" in str(b_score):
@@ -805,20 +807,21 @@ async def predict_clinical(data: ClinicalInput):
                 xgb_comp.get_booster().set_attr(base_score=clean_score)
             
             explainer = shap.TreeExplainer(xgb_comp)
-            shap_vals = explainer.shap_values(df)
-            expected_value = explainer.expected_value
+            shap_vals = explainer.shap_values(df.values)
         except Exception as e:
-            print(f"TreeExplainer failed, using KernelExplainer fallback: {e}")
-            background_data = dice_df_clean[correct_order].sample(n=min(20, len(dice_df_clean)))
-            explainer = shap.KernelExplainer(xgb_comp.predict_proba, background_data)
-            shap_vals = explainer.shap_values(df)
-            if isinstance(shap_vals, list):
-                shap_vals = shap_vals[prediction]
-            expected_value = explainer.expected_value[prediction] if isinstance(explainer.expected_value, (list, np.ndarray)) else explainer.expected_value
+            print(f"TreeExplainer failed, using KernelExplainer with Lambda: {e}")
+            background_summary = shap.kmeans(dice_df_clean[correct_order], 5) # Summarize background for speed
+            explainer = shap.KernelExplainer(predict_fn, background_summary)
+            shap_vals = explainer.shap_values(df.values)
+
         if isinstance(shap_vals, list):
-            final_shap_for_plot = shap_vals[0]
+            current_shap_vals = shap_vals[prediction]
+            expected_val = explainer.expected_value[prediction]
         else:
-            final_shap_for_plot = shap_vals
+            current_shap_vals = shap_vals
+            expected_val = explainer.expected_value
+        if len(current_shap_vals.shape) > 1:
+            current_shap_vals = current_shap_vals[0]
         # --- END SHAP FIX ---
         
         # feature_importance = dict(zip(correct_order, shap_vals[0]))
@@ -832,7 +835,8 @@ async def predict_clinical(data: ClinicalInput):
 
         plt.figure(figsize=(20, 3))
         df_readable = df.rename(columns=FEATURE_NAMES_DISPLAY)
-        shap.force_plot(explainer.expected_value, shap_vals[0], df_readable.iloc[0], matplotlib=True, show=False)
+        # shap.force_plot(explainer.expected_value, shap_vals[0], df_readable.iloc[0], matplotlib=True, show=False)
+        shap.force_plot(expected_val, current_shap_vals, df_readable.iloc[0], matplotlib=True, show=False)
         shap_img = get_base64_plot()
 
         continuous_features = ['age', 'trestbps', 'chol', 'thalach', 'oldpeak']
