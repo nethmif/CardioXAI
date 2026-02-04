@@ -780,11 +780,19 @@ async def predict_clinical(data: ClinicalInput):
         print("DEBUG: raw predict_proba output")
         print(proba_raw, type(proba_raw), proba_raw.dtype)
         proba = np.vectorize(safe_float)(proba)
+
         prob = float(proba[0][1])
         prediction = int(np.argmax(proba[0]))
 
 
         xgb_comp = clinical_model.named_estimators_['xgb']
+        try:
+            base_score = xgb_comp.get_booster().attr("base_score")
+            if base_score is not None and "[" in str(base_score):
+                clean_score = str(base_score).replace('[', '').replace(']', '')
+                xgb_comp.get_booster().set_attr(base_score=clean_score)
+        except Exception as e:
+            print(f"SHAP Hotfix failed (safe to ignore if SHAP works): {e}")
         explainer = shap.TreeExplainer(xgb_comp)
         
         shap_vals = explainer.shap_values(df.values) 
