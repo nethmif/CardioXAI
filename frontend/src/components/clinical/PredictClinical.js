@@ -36,10 +36,11 @@ const PredictClinical = () => {
       Object.keys(formData).forEach(key => {
         submissionData[key] = Number(formData[key]);
       });
-
+      console.log(submissionData);
       // const res = await axios.post('http://localhost:8000/predict_clinical', submissionData);
       const res = await axios.post(`${API_URL}/predict_clinical`, submissionData);
-      console.log("Predict Clinical res",res.data,"end");
+      console.log("Predict Clinical res",res.data);
+      console.log("end")
       setResult(res.data);
     } catch (err) {
       console.error(err);
