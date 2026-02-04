@@ -725,6 +725,7 @@ INTERNAL_MAPPING = {
 
 clinical_model = joblib.load('checkpoints/clinical_model.pkl')
 dice_train_df = pd.read_pickle('checkpoints/train_data.pkl')
+print(dice_train_df.dtypes)
 
 class ClinicalInput(BaseModel):
     age: float
