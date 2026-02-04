@@ -760,14 +760,21 @@ async def predict_clinical(data: ClinicalInput):
         correct_order = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'ca', 'thal', 'slope']
         
         raw_values = np.array([[float(input_dict[k]) for k in correct_order]], dtype=np.float32)
-        df = pd.DataFrame(raw_values, columns=correct_order).astype(np.float32)
+        # df = pd.DataFrame(raw_values, columns=correct_order).astype(np.float32)
+        df = pd.DataFrame(raw_values, columns=correct_order)
+        df = df.applymap(safe_float).astype(np.float32)
 
         dice_df_clean = dice_train_df[correct_order + ['target']].apply(pd.to_numeric, errors='coerce').dropna().astype(np.float32)
 
         # prob = clinical_model.predict_proba(df)[0][1]
-        raw_prob = clinical_model.predict_proba(df)[0][1]
-        prob = safe_float(raw_prob)
-        prediction = int(clinical_model.predict(df)[0])
+        # raw_prob = clinical_model.predict_proba(df)[0][1]
+        # prob = safe_float(raw_prob)
+        # prediction = int(clinical_model.predict(df)[0])
+        proba = clinical_model.predict_proba(df)
+        proba = np.vectorize(safe_float)(proba)
+        prob = float(proba[0][1])
+        prediction = int(np.argmax(proba[0]))
+
 
         xgb_comp = clinical_model.named_estimators_['xgb']
         explainer = shap.TreeExplainer(xgb_comp)
