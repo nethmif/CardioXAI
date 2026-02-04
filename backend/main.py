@@ -633,7 +633,7 @@ app.add_middleware(
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = HierarchicalECGModel().to(device)
 
-checkpoint = torch.load('backend/checkpoints/best_hierarchical_model.pth', map_location=device)
+checkpoint = torch.load('checkpoints/best_hierarchical_model.pth', map_location=device)
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 
@@ -723,8 +723,8 @@ INTERNAL_MAPPING = {
     "thal": {"normal": 1.0, "fixed defect": 2.0, "reversible defect": 3.0}
 }
 
-clinical_model = joblib.load('backend/checkpoints/clinical_model.pkl')
-dice_train_df = pd.read_pickle('backend/checkpoints/train_data.pkl')
+clinical_model = joblib.load('checkpoints/clinical_model.pkl')
+dice_train_df = pd.read_pickle('checkpoints/train_data.pkl')
 
 class ClinicalInput(BaseModel):
     age: float
