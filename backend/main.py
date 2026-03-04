@@ -887,13 +887,9 @@ async def predict_clinical(data: ClinicalInput):
         #     show=False
         # )
         # shap_img = get_base64_plot()
-# --- SHAP CALCULATION WITH FEATURE ALIGNMENT ---
+# --- SHAP CALCULATION (FIXED FOR 26 FEATURE ERROR) ---
         xgb_comp = clinical_model.named_estimators_['xgb']
-        
-        # Get the EXACT feature names the model was trained with
         model_features = xgb_comp.get_booster().feature_names
-        
-        # Re-order and filter your input DF to match the model exactly
         df_aligned = df.reindex(columns=model_features).astype(np.float32)
 
         try:
@@ -904,32 +900,47 @@ async def predict_clinical(data: ClinicalInput):
                 xgb_comp.get_booster().set_attr(base_score=clean_score)
             
             explainer = shap.TreeExplainer(xgb_comp)
-            # Use the ALIGNED dataframe here
-            shap_vals = explainer.shap_values(df_aligned) 
+            raw_shap_vals = explainer.shap_values(df_aligned) 
         except Exception as e:
             print(f"TreeExplainer failed: {e}")
             background_summary = shap.kmeans(dice_df_clean[model_features], 5)
             explainer = shap.KernelExplainer(clinical_model.predict_proba, background_summary)
-            shap_vals = explainer.shap_values(df_aligned)
+            raw_shap_vals = explainer.shap_values(df_aligned)
 
-        # --- NORMALIZE OUTPUTS ---
-        if isinstance(shap_vals, list):
-            current_shap_vals = np.array(shap_vals[prediction]).flatten()
+        # --- THE FIX FOR THE 26 vs 13 MISMATCH ---
+        # If raw_shap_vals is a list (size 2), pick the one for the current prediction
+        if isinstance(raw_shap_vals, list):
+            current_shap_vals = np.array(raw_shap_vals[prediction]).flatten()
+            expected_val = explainer.expected_value[prediction]
+        # If it's a 3D array [samples, features, classes], index the last dimension
+        elif len(raw_shap_vals.shape) == 3:
+            current_shap_vals = raw_shap_vals[0, :, prediction].flatten()
             expected_val = explainer.expected_value[prediction]
         else:
-            current_shap_vals = np.array(shap_vals).flatten()
+            current_shap_vals = np.array(raw_shap_vals).flatten()
             expected_val = explainer.expected_value
 
-        # --- THE CRITICAL FIX FOR YOUR ERROR ---
-        # Ensure the lengths match for the plot
-        if len(model_features) != len(current_shap_vals):
-            raise ValueError(f"Feature mismatch! Model has {len(model_features)} but SHAP gave {len(current_shap_vals)}")
+        # Double check the length matches the 13 features
+        if len(current_shap_vals) != len(model_features):
+            # Fallback: if it's still 26, just take the second half (usually class 1)
+            if len(current_shap_vals) == 2 * len(model_features):
+                current_shap_vals = current_shap_vals[len(model_features):]
+            else:
+                raise ValueError(f"Feature mismatch! Model expects {len(model_features)} but got {len(current_shap_vals)}")
 
+        # Clean expected_val for plotting
         clean_expected_val = float(np.array(expected_val).item()) if hasattr(expected_val, "__len__") else float(expected_val)
+
+        # --- FEATURE IMPORTANCE (For top_drivers_readable) ---
+        feature_importance = {
+            f: float(current_shap_vals[i])
+            for i, f in enumerate(model_features)
+        }
+        top_drivers_raw = sorted(feature_importance.items(), key=lambda x: abs(x[1]), reverse=True)[:3]
+        top_drivers_readable = [FEATURE_NAMES_DISPLAY.get(d[0], d[0]) for d in top_drivers_raw]
 
         # --- PLOTTING ---
         plt.figure(figsize=(20, 3))
-        # Use the aligned features for the display names too
         df_readable = df_aligned.rename(columns=FEATURE_NAMES_DISPLAY)
 
         shap.force_plot(
@@ -1055,7 +1066,8 @@ async def predict_clinical(data: ClinicalInput):
             "prediction": prediction,
             "probability": float(prob),
             "shap_plot": f"data:image/png;base64,{shap_img}",
-            "shap_explanation": get_shap_explanation(top_drivers_readable, shap_vals[0].tolist()),
+            "shap_explanation": get_shap_explanation(top_drivers_readable, current_shap_vals.tolist()),
+            # "shap_explanation": get_shap_explanation(top_drivers_readable, shap_vals[0].tolist()),
             "lime_plot": f"data:image/png;base64,{lime_img}",
             "lime_explanation": get_lime_explanation(exp_lime.as_list()),
             "summary_plot": f"data:image/png;base64,{summary_img}",
