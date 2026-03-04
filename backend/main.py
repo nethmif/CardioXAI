@@ -828,61 +828,108 @@ async def predict_clinical(data: ClinicalInput):
         
         # shap_vals = explainer.shap_values(df.values) 
 
+        # xgb_comp = clinical_model.named_estimators_['xgb']
+        # predict_fn = lambda x: xgb_comp.predict_proba(pd.DataFrame(x, columns=correct_order).astype(np.float32))
+
+        # try:
+        #     b_score = xgb_comp.get_booster().attr("base_score")
+        #     if b_score and "[" in str(b_score):
+        #         clean_score = str(b_score).replace('[', '').replace(']', '')
+        #         xgb_comp.get_booster().set_attr(base_score=clean_score)
+            
+        #     explainer = shap.TreeExplainer(xgb_comp)
+        #     shap_vals = explainer.shap_values(df.values)
+        # except Exception as e:
+        #     print(f"TreeExplainer failed, using KernelExplainer with Lambda: {e}")
+        #     background_summary = shap.kmeans(dice_df_clean[correct_order], 5) # Summarize background for speed
+        #     explainer = shap.KernelExplainer(predict_fn, background_summary)
+        #     shap_vals = explainer.shap_values(df.values)
+
+        # if isinstance(shap_vals, list):
+        #     current_shap_vals = shap_vals[prediction]
+        #     expected_val = explainer.expected_value[prediction]
+        # else:
+        #     current_shap_vals = shap_vals
+        #     expected_val = explainer.expected_value
+        # if len(current_shap_vals.shape) > 1:
+        #     current_shap_vals = current_shap_vals[0]
+        
+        # # feature_importance = dict(zip(correct_order, shap_vals[0]))
+        # feature_importance = {
+        #     f: safe_float(shap_vals[0][i])
+        #     for i, f in enumerate(correct_order)
+        # }
+
+        # top_drivers_raw = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
+        # top_drivers_readable = [FEATURE_NAMES_DISPLAY.get(d[0], d[0]) for d in top_drivers_raw]
+
+        # # plt.figure(figsize=(20, 3))
+        # # df_readable = df.rename(columns=FEATURE_NAMES_DISPLAY)
+        # # # shap.force_plot(explainer.expected_value, shap_vals[0], df_readable.iloc[0], matplotlib=True, show=False)
+        # # shap.force_plot(expected_val, current_shap_vals, df_readable.iloc[0], matplotlib=True, show=False)
+        # # shap_img = get_base64_plot()
+        # # --- SHAP PLOTTING (EXTREMELY ROBUST VERSION) ---
+        # plt.figure(figsize=(20, 3))
+        # df_readable = df.rename(columns=FEATURE_NAMES_DISPLAY)
+
+        # # 1. Force expected_val to be a raw scalar no matter what
+        # # This handles cases where it's [val], [[val]], or a numpy array
+        # clean_expected_val = np.array(expected_val).item() if hasattr(expected_val, "__len__") else expected_val
+        
+        # # 2. Force shap values to be a flat 1D array
+        # clean_shap_vals = np.array(current_shap_vals).flatten()
+
+        # shap.force_plot(
+        #     float(clean_expected_val), 
+        #     clean_shap_vals, 
+        #     df_readable.iloc[0], 
+        #     matplotlib=True, 
+        #     show=False
+        # )
+        # shap_img = get_base64_plot()
+        # --- FIXED SHAP LOGIC ---
         xgb_comp = clinical_model.named_estimators_['xgb']
-        predict_fn = lambda x: xgb_comp.predict_proba(pd.DataFrame(x, columns=correct_order).astype(np.float32))
 
         try:
+            # 1. Fix the XGBoost base_score attribute (Common source of the scalar error)
             b_score = xgb_comp.get_booster().attr("base_score")
             if b_score and "[" in str(b_score):
                 clean_score = str(b_score).replace('[', '').replace(']', '')
                 xgb_comp.get_booster().set_attr(base_score=clean_score)
             
             explainer = shap.TreeExplainer(xgb_comp)
-            shap_vals = explainer.shap_values(df.values)
+            # Use the dataframe directly to keep feature names
+            shap_vals = explainer.shap_values(df) 
         except Exception as e:
-            print(f"TreeExplainer failed, using KernelExplainer with Lambda: {e}")
-            background_summary = shap.kmeans(dice_df_clean[correct_order], 5) # Summarize background for speed
-            explainer = shap.KernelExplainer(predict_fn, background_summary)
-            shap_vals = explainer.shap_values(df.values)
+            print(f"TreeExplainer failed, falling back: {e}")
+            background_summary = shap.kmeans(dice_df_clean[correct_order], 5)
+            explainer = shap.KernelExplainer(clinical_model.predict_proba, background_summary)
+            shap_vals = explainer.shap_values(df)
 
+        # --- THE FIX FOR THE SCALAR ERROR ---
+        # If binary classification, SHAP often returns a list [probs_0, probs_1]
+        # We need the values specifically for the predicted class
         if isinstance(shap_vals, list):
-            current_shap_vals = shap_vals[prediction]
+            # Ensure we are grabbing the array for the actual prediction (0 or 1)
+            current_shap_vals = np.array(shap_vals[prediction]).flatten()
             expected_val = explainer.expected_value[prediction]
         else:
-            current_shap_vals = shap_vals
+            current_shap_vals = np.array(shap_vals).flatten()
             expected_val = explainer.expected_value
-        if len(current_shap_vals.shape) > 1:
-            current_shap_vals = current_shap_vals[0]
-        
-        # feature_importance = dict(zip(correct_order, shap_vals[0]))
-        feature_importance = {
-            f: safe_float(shap_vals[0][i])
-            for i, f in enumerate(correct_order)
-        }
 
-        top_drivers_raw = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
-        top_drivers_readable = [FEATURE_NAMES_DISPLAY.get(d[0], d[0]) for d in top_drivers_raw]
+        # Ensure expected_val is a single float, not an array/list
+        if isinstance(expected_val, (list, np.ndarray)):
+            expected_val = float(expected_val[0])
+        else:
+            expected_val = float(expected_val)
 
-        # plt.figure(figsize=(20, 3))
-        # df_readable = df.rename(columns=FEATURE_NAMES_DISPLAY)
-        # # shap.force_plot(explainer.expected_value, shap_vals[0], df_readable.iloc[0], matplotlib=True, show=False)
-        # shap.force_plot(expected_val, current_shap_vals, df_readable.iloc[0], matplotlib=True, show=False)
-        # shap_img = get_base64_plot()
-        # --- SHAP PLOTTING (EXTREMELY ROBUST VERSION) ---
+        # --- PLOTTING ---
         plt.figure(figsize=(20, 3))
-        df_readable = df.rename(columns=FEATURE_NAMES_DISPLAY)
-
-        # 1. Force expected_val to be a raw scalar no matter what
-        # This handles cases where it's [val], [[val]], or a numpy array
-        clean_expected_val = np.array(expected_val).item() if hasattr(expected_val, "__len__") else expected_val
-        
-        # 2. Force shap values to be a flat 1D array
-        clean_shap_vals = np.array(current_shap_vals).flatten()
-
+        # Use .iloc[0] to get a Series, which SHAP force_plot expects for the 'features' argument
         shap.force_plot(
-            float(clean_expected_val), 
-            clean_shap_vals, 
-            df_readable.iloc[0], 
+            expected_val, 
+            current_shap_vals, 
+            df.rename(columns=FEATURE_NAMES_DISPLAY).iloc[0], 
             matplotlib=True, 
             show=False
         )
