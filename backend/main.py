@@ -630,12 +630,24 @@ app.add_middleware(
 )
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = HierarchicalECGModel().to(device)
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# model = HierarchicalECGModel().to(device)
+# checkpoint = torch.load('checkpoints/best_hierarchical_model.pth', map_location=device)
+# model.load_state_dict(checkpoint['model_state_dict'])
+# model.eval()
 
-checkpoint = torch.load('checkpoints/best_hierarchical_model.pth', map_location=device)
-model.load_state_dict(checkpoint['model_state_dict'])
-model.eval()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+n_splits = 5
+fold_models = []
+
+for i in range(n_splits):
+    model = HierarchicalECGModel().to(device)
+    model.load_state_dict(
+        torch.load(f'checkpoints/model_fold_{i+1}.pth', map_location=device)
+    )
+    model.eval()
+    fold_models.append(model)
+
 
 def safe_float(x):
     try:
@@ -664,28 +676,48 @@ async def predict(file: UploadFile = File(...)):
         img_cv2 = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         processed_img = process_ecg_signal(img_cv2)
         
+        # img_t = torch.from_numpy(processed_img).float().permute(2, 0, 1) / 255.0
+        # mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+        # std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        # img_t = (img_t - mean) / std
         img_t = torch.from_numpy(processed_img).float().permute(2, 0, 1) / 255.0
-        mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
-        std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        mean = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
+        std = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
         img_t = (img_t - mean) / std
         input_tensor = img_t.unsqueeze(0).to(device)
         
-        with torch.no_grad():
-            out1, out2 = model(input_tensor)
-            prob1 = torch.sigmoid(out1).item()
-            if prob1 > 0.5:
-                l1_label = "Myocardial"
-                display_confidence = prob1  
-            else:
-                l1_label = "Other Cardiac Conditions"
-                display_confidence = 1 - prob1 
-            l2_idx = torch.argmax(out2, dim=1).item()
-            l2_classes = ['Normal', 'Abnormal Heartbeat', 'History of MI', 'Acute MI']
-            l2_label = l2_classes[l2_idx]
+        # with torch.no_grad():
+        #     out1, out2 = model(input_tensor)
+        #     prob1 = torch.sigmoid(out1).item()
+        #     if prob1 > 0.5:
+        #         l1_label = "Myocardial"
+        #         display_confidence = prob1  
+        #     else:
+        #         l1_label = "Other Cardiac Conditions"
+        #         display_confidence = 1 - prob1 
+        #     l2_idx = torch.argmax(out2, dim=1).item()
+        #     l2_classes = ['Normal', 'Abnormal Heartbeat', 'History of MI', 'Acute MI']
+        #     l2_label = l2_classes[l2_idx]
+        ensemble_out1 = []
+        ensemble_out2 = []
 
+        with torch.no_grad():
+            for model in fold_models:
+                o1, o2 = model(input_tensor)
+                ensemble_out1.append(torch.sigmoid(o1).cpu().numpy())
+                ensemble_out2.append(torch.softmax(o2, dim=1).cpu().numpy())
+        avg_l1_prob = np.mean(np.array(ensemble_out1))
+        avg_l2_probs = np.mean(np.array(ensemble_out2), axis=0)
+        l1_label = "Myocardial Infarction" if avg_l1_prob > 0.5 else "Other Cardiac Conditions"
+        display_confidence = avg_l1_prob if avg_l1_prob > 0.5 else 1 - avg_l1_prob
+        l2_idx = np.argmax(avg_l2_probs)
+        l2_classes = ['Normal', 'Abnormal', 'History of MI', 'Acute MI']
+        l2_label = l2_classes[l2_idx]
+        # rgb_for_xai = processed_img.astype(np.float32) / 255.0
+        # vis_l1, vis_l2 = generate_heatmaps(model, input_tensor, rgb_for_xai)
         rgb_for_xai = processed_img.astype(np.float32) / 255.0
-        vis_l1, vis_l2 = generate_heatmaps(model, input_tensor, rgb_for_xai)
-        
+        vis_l1, vis_l2 = generate_heatmaps(fold_models[0], input_tensor, rgb_for_xai)
+
         return {
             "level1_prediction": l1_label,
             "level1_confidence": f"{display_confidence:.4f}",
@@ -796,7 +828,6 @@ async def predict_clinical(data: ClinicalInput):
         
         # shap_vals = explainer.shap_values(df.values) 
 
-        # --- ROBUST SHAP FIX (Lambda Version) ---
         xgb_comp = clinical_model.named_estimators_['xgb']
         predict_fn = lambda x: xgb_comp.predict_proba(pd.DataFrame(x, columns=correct_order).astype(np.float32))
 
@@ -822,7 +853,6 @@ async def predict_clinical(data: ClinicalInput):
             expected_val = explainer.expected_value
         if len(current_shap_vals.shape) > 1:
             current_shap_vals = current_shap_vals[0]
-        # --- END SHAP FIX ---
         
         # feature_importance = dict(zip(correct_order, shap_vals[0]))
         feature_importance = {
@@ -833,10 +863,29 @@ async def predict_clinical(data: ClinicalInput):
         top_drivers_raw = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
         top_drivers_readable = [FEATURE_NAMES_DISPLAY.get(d[0], d[0]) for d in top_drivers_raw]
 
+        # plt.figure(figsize=(20, 3))
+        # df_readable = df.rename(columns=FEATURE_NAMES_DISPLAY)
+        # # shap.force_plot(explainer.expected_value, shap_vals[0], df_readable.iloc[0], matplotlib=True, show=False)
+        # shap.force_plot(expected_val, current_shap_vals, df_readable.iloc[0], matplotlib=True, show=False)
+        # shap_img = get_base64_plot()
+        # --- SHAP PLOTTING (EXTREMELY ROBUST VERSION) ---
         plt.figure(figsize=(20, 3))
         df_readable = df.rename(columns=FEATURE_NAMES_DISPLAY)
-        # shap.force_plot(explainer.expected_value, shap_vals[0], df_readable.iloc[0], matplotlib=True, show=False)
-        shap.force_plot(expected_val, current_shap_vals, df_readable.iloc[0], matplotlib=True, show=False)
+
+        # 1. Force expected_val to be a raw scalar no matter what
+        # This handles cases where it's [val], [[val]], or a numpy array
+        clean_expected_val = np.array(expected_val).item() if hasattr(expected_val, "__len__") else expected_val
+        
+        # 2. Force shap values to be a flat 1D array
+        clean_shap_vals = np.array(current_shap_vals).flatten()
+
+        shap.force_plot(
+            float(clean_expected_val), 
+            clean_shap_vals, 
+            df_readable.iloc[0], 
+            matplotlib=True, 
+            show=False
+        )
         shap_img = get_base64_plot()
 
         continuous_features = ['age', 'trestbps', 'chol', 'thalach', 'oldpeak']
@@ -912,22 +961,32 @@ async def predict_clinical(data: ClinicalInput):
             #     cf_df[col] = pd.to_numeric(cf_df[col].to_numpy().flatten(), errors='coerce')
             # dice_data = cf_df.to_dict(orient='records')
             cf_df = dice_exp.cf_examples_list[0].final_cfs_df.copy()
-
             for col in cf_df.columns:
                 cf_df[col] = cf_df[col].apply(safe_float)
-
             dice_data = cf_df.to_dict(orient="records")
-
         except Exception as e:
             print(f"DiCE failed: {e}")
             dice_data = "EMPTY" 
-
         llm_report = get_llm_advice(prediction, prob, input_dict, top_drivers_readable)
 
+        # plt.figure(figsize=(10, 5))
+        # sample_data = dice_df_clean[correct_order].sample(n=min(50, len(dice_df_clean)))
+        # sample_shap = explainer.shap_values(sample_data.values)
+        # shap.summary_plot(sample_shap, sample_data.rename(columns=FEATURE_NAMES_DISPLAY), show=False)
+        # summary_img = get_base64_plot()
         plt.figure(figsize=(10, 5))
-        sample_data = dice_df_clean[correct_order].sample(n=min(50, len(dice_df_clean)))
-        sample_shap = explainer.shap_values(sample_data.values)
-        shap.summary_plot(sample_shap, sample_data.rename(columns=FEATURE_NAMES_DISPLAY), show=False)
+        sample_size = min(50, len(dice_df_clean))
+        sample_data = dice_df_clean[correct_order].sample(n=sample_size)
+        raw_sample_shap = explainer.shap_values(sample_data.values)        
+        if isinstance(raw_sample_shap, list):
+            display_sample_shap = raw_sample_shap[prediction]
+        else:
+            display_sample_shap = raw_sample_shap
+        shap.summary_plot(
+            display_sample_shap, 
+            sample_data.rename(columns=FEATURE_NAMES_DISPLAY), 
+            show=False
+        )
         summary_img = get_base64_plot()
 
         lime_explainer = lime.lime_tabular.LimeTabularExplainer(
