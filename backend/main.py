@@ -887,49 +887,55 @@ async def predict_clinical(data: ClinicalInput):
         #     show=False
         # )
         # shap_img = get_base64_plot()
-        # --- FIXED SHAP LOGIC ---
+# --- SHAP CALCULATION WITH FEATURE ALIGNMENT ---
         xgb_comp = clinical_model.named_estimators_['xgb']
+        
+        # Get the EXACT feature names the model was trained with
+        model_features = xgb_comp.get_booster().feature_names
+        
+        # Re-order and filter your input DF to match the model exactly
+        df_aligned = df.reindex(columns=model_features).astype(np.float32)
 
         try:
-            # 1. Fix the XGBoost base_score attribute (Common source of the scalar error)
+            # Fix XGBoost base_score bug
             b_score = xgb_comp.get_booster().attr("base_score")
             if b_score and "[" in str(b_score):
                 clean_score = str(b_score).replace('[', '').replace(']', '')
                 xgb_comp.get_booster().set_attr(base_score=clean_score)
             
             explainer = shap.TreeExplainer(xgb_comp)
-            # Use the dataframe directly to keep feature names
-            shap_vals = explainer.shap_values(df) 
+            # Use the ALIGNED dataframe here
+            shap_vals = explainer.shap_values(df_aligned) 
         except Exception as e:
-            print(f"TreeExplainer failed, falling back: {e}")
-            background_summary = shap.kmeans(dice_df_clean[correct_order], 5)
+            print(f"TreeExplainer failed: {e}")
+            background_summary = shap.kmeans(dice_df_clean[model_features], 5)
             explainer = shap.KernelExplainer(clinical_model.predict_proba, background_summary)
-            shap_vals = explainer.shap_values(df)
+            shap_vals = explainer.shap_values(df_aligned)
 
-        # --- THE FIX FOR THE SCALAR ERROR ---
-        # If binary classification, SHAP often returns a list [probs_0, probs_1]
-        # We need the values specifically for the predicted class
+        # --- NORMALIZE OUTPUTS ---
         if isinstance(shap_vals, list):
-            # Ensure we are grabbing the array for the actual prediction (0 or 1)
             current_shap_vals = np.array(shap_vals[prediction]).flatten()
             expected_val = explainer.expected_value[prediction]
         else:
             current_shap_vals = np.array(shap_vals).flatten()
             expected_val = explainer.expected_value
 
-        # Ensure expected_val is a single float, not an array/list
-        if isinstance(expected_val, (list, np.ndarray)):
-            expected_val = float(expected_val[0])
-        else:
-            expected_val = float(expected_val)
+        # --- THE CRITICAL FIX FOR YOUR ERROR ---
+        # Ensure the lengths match for the plot
+        if len(model_features) != len(current_shap_vals):
+            raise ValueError(f"Feature mismatch! Model has {len(model_features)} but SHAP gave {len(current_shap_vals)}")
+
+        clean_expected_val = float(np.array(expected_val).item()) if hasattr(expected_val, "__len__") else float(expected_val)
 
         # --- PLOTTING ---
         plt.figure(figsize=(20, 3))
-        # Use .iloc[0] to get a Series, which SHAP force_plot expects for the 'features' argument
+        # Use the aligned features for the display names too
+        df_readable = df_aligned.rename(columns=FEATURE_NAMES_DISPLAY)
+
         shap.force_plot(
-            expected_val, 
+            clean_expected_val, 
             current_shap_vals, 
-            df.rename(columns=FEATURE_NAMES_DISPLAY).iloc[0], 
+            df_readable.iloc[0], 
             matplotlib=True, 
             show=False
         )
