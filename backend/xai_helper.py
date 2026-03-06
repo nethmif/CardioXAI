@@ -62,7 +62,10 @@ class L2Wrapper(torch.nn.Module):
 
 class BinaryTarget:
     def __call__(self, model_output):
-        return model_output
+        if model_output.dim() == 1:
+            return model_output
+        else:
+            return model_output[:, 0]
 
 def generate_heatmaps(model, input_tensor, rgb_img_float, true_l2_label=None):
     """
@@ -75,6 +78,7 @@ def generate_heatmaps(model, input_tensor, rgb_img_float, true_l2_label=None):
     Returns:
         vis_l1_bgr, vis_l2_bgr: visualized heatmaps in BGR format
     """
+    model.eval()
     target_layers = [model.backbone.features[-1]]
 
     cam_l1 = GradCAM(model=L1Wrapper(model), target_layers=target_layers)
@@ -109,7 +113,13 @@ def visualize_ecg(model, input_tensor, class_names_L2):
         pred_l2_text = class_names_L2[pred_l2_idx]
 
     rgb_img = input_tensor.squeeze(0).permute(1,2,0).cpu().numpy()
-    rgb_img = (rgb_img * np.array([0.5, 0.5, 0.5])) + 0.5  
+    rgb_img = (rgb_img * 0.5 + 0.5)
     rgb_img = np.clip(rgb_img, 0, 1)
 
-    vis_l1, vis_l2 = generate_heatmaps(model, input_tensor, rgb_img)
+    # vis_l1, vis_l2 = generate_heatmaps(model, input_tensor, rgb_img)
+    vis_l1, vis_l2 = generate_heatmaps(
+        model,
+        input_tensor,
+        rgb_img,
+        true_l2_label=pred_l2_idx
+    )
