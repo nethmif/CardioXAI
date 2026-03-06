@@ -51,7 +51,6 @@ const PredictECG = ({ isSideBySide }) => {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const margin = 15;
       const contentWidth = pageWidth - (margin * 2);
-
       const headerY = 20;
       const lineY = 32;
 
