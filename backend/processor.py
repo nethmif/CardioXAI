@@ -17,11 +17,6 @@
         
 #     return resized
 
-import cv2
-import numpy as np
-from torchvision import transforms
-from PIL import Image
-
 # def process_ecg_signal(img, target_size=(224, 224)):
 #     """
 #     Crop, grayscale, binarize, and resize ECG images.
@@ -50,13 +45,37 @@ from PIL import Image
 #         resized = cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
 
 #     return resized
+
+# inference_transform = transforms.Compose([
+#     transforms.ToPILImage(),
+#     transforms.Resize((224, 224)),
+#     transforms.ToTensor(),
+#     transforms.Normalize(mean=[0.5]*3, std=[0.5]*3)  
+# ])
+
+# def prepare_ecg_for_model(img):
+#     """
+#     Takes a raw OpenCV image, applies preprocessing + transform,
+#     returns a tensor ready for the model.
+#     """
+#     processed = process_ecg_signal(img)
+#     if processed is None:
+#         return None
+#     tensor = inference_transform(processed)
+#     tensor = tensor.unsqueeze(0)  
+#     return tensor
+import cv2
+import numpy as np
+from torchvision import transforms
+from PIL import Image
+
 def process_ecg_signal(img, target_size=(224,224)):
 
     h, w = img.shape[:2]
 
     y_start = int(h * 0.20)
     y_end = int(h * 0.95)
-
+    if y_end <= y_start: y_end = h_img
     cropped = img[y_start:y_end, :]
 
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
@@ -72,21 +91,15 @@ def process_ecg_signal(img, target_size=(224,224)):
 
     return resized
 
+
 inference_transform = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5]*3, std=[0.5]*3)  
+    transforms.Normalize(mean=[0.5]*3, std=[0.5]*3)
 ])
 
 def prepare_ecg_for_model(img):
-    """
-    Takes a raw OpenCV image, applies preprocessing + transform,
-    returns a tensor ready for the model.
-    """
     processed = process_ecg_signal(img)
-    if processed is None:
-        return None
-    tensor = inference_transform(processed)
-    tensor = tensor.unsqueeze(0)  
-    return tensor
+    tensor = inference_transform(processed).unsqueeze(0)  # Add batch dim
+    return tensor.to(device)

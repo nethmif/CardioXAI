@@ -680,10 +680,12 @@ async def predict(file: UploadFile = File(...)):
         # mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
         # std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
         # img_t = (img_t - mean) / std
-        img_t = torch.from_numpy(processed_img).float().permute(2, 0, 1) / 255.0
-        mean = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
-        std = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
-        img_t = (img_t - mean) / std
+        # img_t = torch.from_numpy(processed_img).float().permute(2, 0, 1) / 255.0
+        # mean = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
+        # std = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
+        # img_t = (img_t - mean) / std
+        img_t = torch.from_numpy(processed_img).float().permute(2,0,1) / 255.0
+        img_t = (img_t - 0.5) / 0.5
         input_tensor = img_t.unsqueeze(0).to(device)
         
         # with torch.no_grad():
