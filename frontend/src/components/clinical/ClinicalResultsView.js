@@ -81,10 +81,13 @@ const ClinicalResultsView = ({ result, reset }) => {
   const renderTooltip = (text) => <Tooltip id="button-tooltip">{text}</Tooltip>;
 
   const prob = Number(result?.probability);
+  console.log("Probability: ", result.probability);
+  console.log("Prob: ", prob);
 
   const riskPercent = Number.isFinite(prob)
     ? (prob * 100).toFixed(1)
     : "N/A";
+  console.log("Risk Percent: ", riskPercent);
 
   return (
     <div className="animate__animated animate__fadeIn">
