@@ -75,7 +75,7 @@ def process_ecg_signal(img, target_size=(224,224)):
 
     y_start = int(h * 0.20)
     y_end = int(h * 0.95)
-    if y_end <= y_start: y_end = h_img
+    if y_end <= y_start: y_end = h
     cropped = img[y_start:y_end, :]
 
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)

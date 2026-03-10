@@ -595,6 +595,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from model_utils import HierarchicalECGModel
 from processor import process_ecg_signal  
+from processor import prepare_ecg_for_model
 import base64
 from xai_helper import generate_heatmaps
 import matplotlib
@@ -674,7 +675,7 @@ async def predict(file: UploadFile = File(...)):
         data = await file.read()
         image = Image.open(io.BytesIO(data)).convert('RGB')
         img_cv2 = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        processed_img = process_ecg_signal(img_cv2)
+        # processed_img = process_ecg_signal(img_cv2)
         
         # img_t = torch.from_numpy(processed_img).float().permute(2, 0, 1) / 255.0
         # mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
@@ -684,9 +685,10 @@ async def predict(file: UploadFile = File(...)):
         # mean = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
         # std = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
         # img_t = (img_t - mean) / std
-        img_t = torch.from_numpy(processed_img).float().permute(2,0,1) / 255.0
-        img_t = (img_t - 0.5) / 0.5
-        input_tensor = img_t.unsqueeze(0).to(device)
+        # img_t = torch.from_numpy(processed_img).float().permute(2,0,1) / 255.0
+        # img_t = (img_t - 0.5) / 0.5
+        # input_tensor = img_t.unsqueeze(0).to(device)
+        input_tensor = prepare_ecg_for_model(img_cv2)
         
         # with torch.no_grad():
         #     out1, out2 = model(input_tensor)
@@ -717,6 +719,7 @@ async def predict(file: UploadFile = File(...)):
         l2_label = l2_classes[l2_idx]
         # rgb_for_xai = processed_img.astype(np.float32) / 255.0
         # vis_l1, vis_l2 = generate_heatmaps(model, input_tensor, rgb_for_xai)
+        processed_img = process_ecg_signal(img_cv2)
         rgb_for_xai = processed_img.astype(np.float32) / 255.0
         vis_l1, vis_l2 = generate_heatmaps(fold_models[0], input_tensor, rgb_for_xai)
 
