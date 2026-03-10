@@ -669,59 +669,109 @@ def encode_img(img):
     _, buffer = cv2.imencode('.jpg', img)
     return base64.b64encode(buffer).decode('utf-8')
 
+# @app.post("/predict")
+# async def predict(file: UploadFile = File(...)):
+#     try:
+#         data = await file.read()
+#         image = Image.open(io.BytesIO(data)).convert('RGB')
+#         img_cv2 = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+#         # processed_img = process_ecg_signal(img_cv2)
+        
+#         # img_t = torch.from_numpy(processed_img).float().permute(2, 0, 1) / 255.0
+#         # mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+#         # std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+#         # img_t = (img_t - mean) / std
+#         # img_t = torch.from_numpy(processed_img).float().permute(2, 0, 1) / 255.0
+#         # mean = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
+#         # std = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
+#         # img_t = (img_t - mean) / std
+#         # img_t = torch.from_numpy(processed_img).float().permute(2,0,1) / 255.0
+#         # img_t = (img_t - 0.5) / 0.5
+#         # input_tensor = img_t.unsqueeze(0).to(device)
+#         input_tensor = prepare_ecg_for_model(img_cv2)
+        
+#         # with torch.no_grad():
+#         #     out1, out2 = model(input_tensor)
+#         #     prob1 = torch.sigmoid(out1).item()
+#         #     if prob1 > 0.5:
+#         #         l1_label = "Myocardial"
+#         #         display_confidence = prob1  
+#         #     else:
+#         #         l1_label = "Other Cardiac Conditions"
+#         #         display_confidence = 1 - prob1 
+#         #     l2_idx = torch.argmax(out2, dim=1).item()
+#         #     l2_classes = ['Normal', 'Abnormal Heartbeat', 'History of MI', 'Acute MI']
+#         #     l2_label = l2_classes[l2_idx]
+#         ensemble_out1 = []
+#         ensemble_out2 = []
+
+#         with torch.no_grad():
+#             for model in fold_models:
+#                 o1, o2 = model(input_tensor)
+#                 ensemble_out1.append(torch.sigmoid(o1).cpu().numpy())
+#                 ensemble_out2.append(torch.softmax(o2, dim=1).cpu().numpy())
+#         avg_l1_prob = np.mean(np.array(ensemble_out1))
+#         avg_l2_probs = np.mean(np.array(ensemble_out2), axis=0)
+#         l1_label = "Myocardial Infarction" if avg_l1_prob > 0.5 else "Other Cardiac Conditions"
+#         display_confidence = avg_l1_prob if avg_l1_prob > 0.5 else 1 - avg_l1_prob
+#         l2_idx = np.argmax(avg_l2_probs)
+#         l2_classes = ['Normal', 'Abnormal', 'History of MI', 'Acute MI']
+#         l2_label = l2_classes[l2_idx]
+#         # rgb_for_xai = processed_img.astype(np.float32) / 255.0
+#         # vis_l1, vis_l2 = generate_heatmaps(model, input_tensor, rgb_for_xai)
+#         processed_img = process_ecg_signal(img_cv2)
+#         rgb_for_xai = processed_img.astype(np.float32) / 255.0
+#         vis_l1, vis_l2 = generate_heatmaps(fold_models[0], input_tensor, rgb_for_xai)
+
+#         return {
+#             "level1_prediction": l1_label,
+#             "level1_confidence": f"{display_confidence:.4f}",
+#             "level2_prediction": l2_label,
+#             "heatmap_l1": f"data:image/jpeg;base64,{encode_img(vis_l1)}",
+#             "heatmap_l2": f"data:image/jpeg;base64,{encode_img(vis_l2)}"
+#         }
+
+#     except Exception as e:
+#         import traceback
+#         print(traceback.format_exc()) 
+#         return {"error": str(e)}
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     try:
         data = await file.read()
+        # 1. Load as RGB
         image = Image.open(io.BytesIO(data)).convert('RGB')
-        img_cv2 = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        # processed_img = process_ecg_signal(img_cv2)
+        img_np = np.array(image) 
+
+        # 2. Process (Matches Jupyter Cleaning)
+        input_tensor = prepare_ecg_for_model(img_np)
         
-        # img_t = torch.from_numpy(processed_img).float().permute(2, 0, 1) / 255.0
-        # mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
-        # std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
-        # img_t = (img_t - mean) / std
-        # img_t = torch.from_numpy(processed_img).float().permute(2, 0, 1) / 255.0
-        # mean = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
-        # std = torch.tensor([0.5, 0.5, 0.5]).view(3, 1, 1)
-        # img_t = (img_t - mean) / std
-        # img_t = torch.from_numpy(processed_img).float().permute(2,0,1) / 255.0
-        # img_t = (img_t - 0.5) / 0.5
-        # input_tensor = img_t.unsqueeze(0).to(device)
-        input_tensor = prepare_ecg_for_model(img_cv2)
-        
-        # with torch.no_grad():
-        #     out1, out2 = model(input_tensor)
-        #     prob1 = torch.sigmoid(out1).item()
-        #     if prob1 > 0.5:
-        #         l1_label = "Myocardial"
-        #         display_confidence = prob1  
-        #     else:
-        #         l1_label = "Other Cardiac Conditions"
-        #         display_confidence = 1 - prob1 
-        #     l2_idx = torch.argmax(out2, dim=1).item()
-        #     l2_classes = ['Normal', 'Abnormal Heartbeat', 'History of MI', 'Acute MI']
-        #     l2_label = l2_classes[l2_idx]
         ensemble_out1 = []
         ensemble_out2 = []
 
         with torch.no_grad():
-            for model in fold_models:
-                o1, o2 = model(input_tensor)
+            for m in fold_models:
+                o1, o2 = m(input_tensor)
                 ensemble_out1.append(torch.sigmoid(o1).cpu().numpy())
+                # Use softmax to get probabilities for the ensemble
                 ensemble_out2.append(torch.softmax(o2, dim=1).cpu().numpy())
-        avg_l1_prob = np.mean(np.array(ensemble_out1))
-        avg_l2_probs = np.mean(np.array(ensemble_out2), axis=0)
+
+        # 3. Proper Averaging
+        avg_l1_prob = np.mean(ensemble_out1)
+        avg_l2_probs = np.mean(np.vstack(ensemble_out2), axis=0)
+
         l1_label = "Myocardial Infarction" if avg_l1_prob > 0.5 else "Other Cardiac Conditions"
         display_confidence = avg_l1_prob if avg_l1_prob > 0.5 else 1 - avg_l1_prob
+        
         l2_idx = np.argmax(avg_l2_probs)
         l2_classes = ['Normal', 'Abnormal', 'History of MI', 'Acute MI']
         l2_label = l2_classes[l2_idx]
-        # rgb_for_xai = processed_img.astype(np.float32) / 255.0
-        # vis_l1, vis_l2 = generate_heatmaps(model, input_tensor, rgb_for_xai)
-        processed_img = process_ecg_signal(img_cv2)
+
+        # 4. Heatmaps (Use the processed image for visualization)
+        processed_img = process_ecg_signal(img_np)
         rgb_for_xai = processed_img.astype(np.float32) / 255.0
-        vis_l1, vis_l2 = generate_heatmaps(fold_models[0], input_tensor, rgb_for_xai)
+        # Use fold_models[0] but target the ENSEMBLE'S predicted class
+        vis_l1, vis_l2 = generate_heatmaps(fold_models[0], input_tensor, rgb_for_xai, true_l2_label=l2_idx)
 
         return {
             "level1_prediction": l1_label,
@@ -732,7 +782,6 @@ async def predict(file: UploadFile = File(...)):
         }
 
     except Exception as e:
-        import traceback
         print(traceback.format_exc()) 
         return {"error": str(e)}
 
