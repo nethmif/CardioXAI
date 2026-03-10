@@ -69,6 +69,7 @@ import numpy as np
 from torchvision import transforms
 from PIL import Image
 import torch
+import matplotlib.pyplot as plt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -97,12 +98,15 @@ def process_ecg_signal(img, target_size=(224,224)):
 
 inference_transform = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((224, 224)),
+    # transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.5]*3, std=[0.5]*3)
 ])
 
 def prepare_ecg_for_model(img):
     processed = process_ecg_signal(img)
+    plt.imshow(processed)
+    plt.title("Processed ECG sent to model")
+    plt.show()
     tensor = inference_transform(processed).unsqueeze(0)  # Add batch dim
     return tensor.to(device)
