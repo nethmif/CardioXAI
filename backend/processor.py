@@ -68,6 +68,9 @@ import cv2
 import numpy as np
 from torchvision import transforms
 from PIL import Image
+import torch
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def process_ecg_signal(img, target_size=(224,224)):
 
