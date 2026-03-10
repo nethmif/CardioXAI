@@ -94,19 +94,34 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #     resized = cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
 
 #     return resized
-def process_ecg_signal(img, target_size=(224,224)):
-    h, w = img.shape[:2]
-    # Match your Jupyter crop exactly
-    y_start, y_end = int(h * 0.20), int(h * 0.95)
+# def process_ecg_signal(img, target_size=(224,224)):
+#     h, w = img.shape[:2]
+#     # Match your Jupyter crop exactly
+#     y_start, y_end = int(h * 0.20), int(h * 0.95)
+#     cropped = img[y_start:y_end, :]
+
+#     # Convert to gray (using RGB order if you followed the change above)
+#     gray = cv2.cvtColor(cropped, cv2.COLOR_RGB2GRAY)
+
+#     # Thresholding (The most important part for your model)
+#     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+#     resized = cv2.resize(binary, target_size)
+#     # Convert back to 3-channel for EfficientNet
+#     return cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
+def process_ecg_signal(img, target_size=(224, 224)):
+    # 1. Crop exactly like Jupyter process_and_deduplicate
+    h_img, w_img = img.shape[:2]
+    y_start = int(h_img * 0.20)
+    y_end = int(h_img * 0.95)
+    if y_end <= y_start: y_end = h_img
     cropped = img[y_start:y_end, :]
 
-    # Convert to gray (using RGB order if you followed the change above)
-    gray = cv2.cvtColor(cropped, cv2.COLOR_RGB2GRAY)
-
-    # Thresholding (The most important part for your model)
+    # 2. Convert to Binary (The "Jupyter Secret Sauce")
+    gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    resized = cv2.resize(binary, target_size)
-    # Convert back to 3-channel for EfficientNet
+
+    # 3. Resize and convert back to RGB (because EfficientNet wants 3 channels)
+    resized = cv2.resize(binary, target_size, interpolation=cv2.INTER_AREA)
     return cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
 
 inference_transform = transforms.Compose([
