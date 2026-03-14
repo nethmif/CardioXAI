@@ -5,6 +5,7 @@ import jsPDF from 'jspdf';
 
 const PredictECG = ({ isSideBySide }) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+  console.log("Predict ECG API URL:", process.env.REACT_APP_API_URL);
 
   const [stage, setStage] = useState('upload'); 
   const [file, setFile] = useState(null);

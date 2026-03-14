@@ -39,6 +39,7 @@ const PredictClinical = () => {
       console.log(submissionData);
       // const res = await axios.post('http://localhost:8000/predict_clinical', submissionData);
       const res = await axios.post(`${API_URL}/predict_clinical`, submissionData);
+      console.log("Predict Clinical API URL:", process.env.REACT_APP_API_URL);
       console.log("Predict Clinical res",res.data);
       console.log("end")
       setResult(res.data);
