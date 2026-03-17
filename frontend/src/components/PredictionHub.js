@@ -152,13 +152,27 @@ const PredictionHub = () => {
     if (!ecgFile) return alert("Upload ECG image first!");
     const formData = new FormData();
     formData.append("file", ecgFile);
-    Object.keys(clinicalData).forEach(key => formData.append(key, clinicalData[key]));
+    // Object.keys(clinicalData).forEach(key => formData.append(key, clinicalData[key]));
+    const requiredFields = [
+      "age","sex","cp","trestbps","chol","fbs",
+      "restecg","thalach","exang","oldpeak",
+      "ca","thal","slope"
+    ];
 
+    for (let key of requiredFields) {
+      if (!(key in clinicalData)) {
+        alert(`Missing clinical field: ${key}`);
+        return;
+      }
+      formData.append(key, clinicalData[key]);
+    }
     try {
       const res = await axios.post(`${API_URL}/predict_combined`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
       setCombinedResult(res.data);
+      console.log("ECG FILE:", ecgFile);
+      console.log("CLINICAL DATA:", clinicalData);
     } catch (err) {
       console.error(err);
       alert("Error: Could not get combined prediction");
@@ -181,8 +195,16 @@ const PredictionHub = () => {
 
             {/* Show Combined Predict only in split view */}
             {sideBySide && (
-              <Button variant="success" size="sm" onClick={handleCombinedPredict}>
-                Combined Risk Prediction
+              // <Button variant="success" size="sm" onClick={handleCombinedPredict}>
+              //   Combined Risk Prediction
+              // </Button>
+              <Button 
+                  variant="success" 
+                  size="sm" 
+                  onClick={handleCombinedPredict}
+                  disabled={!ecgFile || Object.keys(clinicalData).length === 0}
+              >
+                  Combined Risk Prediction
               </Button>
             )}
           </div>

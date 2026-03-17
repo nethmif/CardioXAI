@@ -16,9 +16,22 @@ const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = fa
   const [result, setResult] = useState(null);
   const [validated, setValidated] = useState(false);
 
+  // const handleInputChange = (e) => {
+  //   const { name, value } = e.target;
+  //   setFormData(prev => ({ ...prev, [name]: value }));
+  // };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+
+    const numericData = {};
+    Object.keys(updated).forEach(k => {
+      numericData[k] = Number(updated[k]);
+    });
+
+    setClinicalData(numericData);
   };
 
   const handlePredict = async (e) => {
