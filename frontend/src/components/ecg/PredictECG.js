@@ -4,7 +4,7 @@ import axios from 'axios';
 import jsPDF from 'jspdf';
 
 // const PredictECG = ({ isSideBySide }) => {
-const PredictECG = ({ ecgFile, setEcgFile, hidePredictButton = false}) => {
+const PredictECG = ({ ecgFile, setEcgFile, hidePredictButton = false, isSideBySide = false}) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
   console.log("Predict ECG API URL:", process.env.REACT_APP_API_URL);
 

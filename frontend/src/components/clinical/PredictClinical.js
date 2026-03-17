@@ -4,7 +4,7 @@ import axios from 'axios';
 import ClinicalResultsView from './ClinicalResultsView';
 
 // const PredictClinical = () => {
-const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = false}) => {
+const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = false, isSideBySide = false}) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
   const [formData, setFormData] = useState({
