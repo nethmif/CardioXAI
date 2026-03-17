@@ -264,7 +264,7 @@ const PredictionHub = () => {
           <Col md={8}>
             <Card className="shadow-sm p-4 border-0 mb-4">
               <h4 className="border-bottom pb-2 mb-4">Clinical Features</h4>
-              <PredictClinical clinicalData={clinicalData} setClinicalData={setClinicalData} hidePredictButton={false} />
+              <PredictClinical clinicalData={clinicalData} setClinicalData={setClinicalData} hidePredictButton={false} isSideBySide={sideBySide}/>
             </Card>
           </Col>
         </Row>
@@ -276,7 +276,8 @@ const PredictionHub = () => {
           <Col md={6}>
             <Card className="shadow-sm p-4 border-0">
               <h4 className="border-bottom pb-2 mb-2">ECG Analysis</h4>
-              <PredictECG ecgFile={ecgFile} setEcgFile={setEcgFile} hidePredictButton={true} />
+              <PredictECG ecgFile={ecgFile} setEcgFile={setEcgFile} hidePredictButton={true} isSideBySide={sideBySide} 
+ />
             </Card>
           </Col>
           <Col md={6}>
