@@ -199,6 +199,14 @@ const PredictionHub = () => {
                 <p className="text-muted flex-grow-1">
                   Initial screening for myocardial infarction or other cardiac conditions.
                 </p>
+                <div className="bg-light rounded-3 p-3 mb-4 text-start">
+                   <h6 className="small fw-bold text-uppercase text-primary mb-2">Key Features:</h6>
+                   <ul className="small text-muted mb-0 ps-3">
+                     <li>Hierarchical Triage</li>
+                     <li>Heatmaps identifying cause of the diagnosis</li>
+                     <li>Supports JPEG/PNG diagnostic scans</li>
+                   </ul>
+               </div>
                 <Button 
                   variant="outline-primary" size="lg" className="py-3 fw-bold" 
                   onClick={() => setView('ecg')}
@@ -216,6 +224,16 @@ const PredictionHub = () => {
                 <p className="text-muted flex-grow-1">
                   Evaluate cardiovascular risk based on EHR and lab results.
                 </p>
+                <div className="bg-light rounded-3 p-3 mb-4 text-start">
+                   <h6 className="small fw-bold text-uppercase text-primary mb-2">Key Features:</h6>
+                   <ul className="small text-muted mb-0 ps-3">
+                     <li>Main factors behind the prediction</li>
+                     <li>Visual breakdown of how the decision was made</li>
+                     <li>How each patient factor influenced the result</li>
+                     <li>Outcome changes under different conditions</li>
+                     <li>Confidence score (0–100%)</li>
+                   </ul>
+                 </div>
                 <Button 
                   variant="outline-primary" size="lg" className="py-3 fw-bold" 
                   onClick={() => setView('clinical')}
