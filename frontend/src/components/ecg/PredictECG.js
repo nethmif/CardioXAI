@@ -4,7 +4,7 @@ import axios from 'axios';
 import jsPDF from 'jspdf';
 
 // const PredictECG = ({ isSideBySide }) => {
-const PredictECG = ({ ecgFile, setEcgFile, hidePredictButton = false, isSideBySide = false }) => {
+const PredictECG = ({ ecgFile, setEcgFile, hidePredictButton = false}) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
   console.log("Predict ECG API URL:", process.env.REACT_APP_API_URL);
 
@@ -147,9 +147,17 @@ const PredictECG = ({ ecgFile, setEcgFile, hidePredictButton = false, isSideBySi
 
           <div className="d-flex justify-content-between align-items-center">
             <Button variant="outline-secondary" size="sm" onClick={() => setStage('upload')}>Back</Button>
-            <Button variant="primary" size="sm" className="px-3" onClick={handleUpload} disabled={loading}>
+            {/* <Button variant="primary" size="sm" className="px-3" onClick={handleUpload} disabled={loading}>
               {loading ? <Spinner size="sm" /> : "Predict & Explain"}
-            </Button>
+            </Button> */}
+            {!hidePredictButton && (
+              <div className="d-flex justify-content-between align-items-center">
+                <Button variant="outline-secondary" size="sm" onClick={() => setStage('upload')}>Back</Button>
+                <Button variant="primary" size="sm" className="px-3" onClick={handleUpload} disabled={loading}>
+                  {loading ? <Spinner size="sm" /> : "Predict & Explain"}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}

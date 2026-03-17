@@ -4,7 +4,7 @@ import axios from 'axios';
 import ClinicalResultsView from './ClinicalResultsView';
 
 // const PredictClinical = () => {
-const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = false, isSideBySide = false }) => {
+const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = false}) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
   const [formData, setFormData] = useState({
@@ -180,7 +180,7 @@ const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = fa
             </Col>
           </Row>
 
-          <div className="d-flex justify-content-end mt-4">
+          {/* <div className="d-flex justify-content-end mt-4">
             <Button variant="primary" type="submit" disabled={loading} className="px-5 py-2 fw-bold shadow">
               {loading ? (
                 <>
@@ -189,7 +189,19 @@ const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = fa
                 </>
               ) : "Predict & Explain Clinical Risk"}
             </Button>
-          </div>
+          </div> */}
+          {!hidePredictButton && (
+            <div className="d-flex justify-content-end mt-4">
+              <Button variant="primary" type="submit" disabled={loading} className="px-5 py-2 fw-bold shadow">
+                {loading ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    Analyzing...
+                  </>
+                ) : "Predict & Explain Clinical Risk"}
+              </Button>
+            </div>
+          )}
         </Form>
       ) : (
         <ClinicalResultsView 
