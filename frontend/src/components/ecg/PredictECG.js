@@ -26,6 +26,7 @@ const PredictECG = ({ ecgFile, setEcgFile, hidePredictButton = false, isSideBySi
     }
     setError(null);
     setFile(selectedFile);
+    setEcgFile(selectedFile);
     setFileDetails({ name: selectedFile.name, size: (selectedFile.size / 1024).toFixed(2) + " KB", type: selectedFile.type });
     setPreview(URL.createObjectURL(selectedFile));
     setStage('preview');

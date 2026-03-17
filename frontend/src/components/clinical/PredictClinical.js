@@ -44,6 +44,7 @@ const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = fa
       console.log("Predict Clinical res",res.data);
       console.log("end")
       setResult(res.data);
+      setClinicalData(submissionData); 
     } catch (err) {
       console.error(err);
       alert("Error: Could not connect to the diagnostic engine.");
