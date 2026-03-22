@@ -14,7 +14,8 @@ const PredictClinical = ({ clinicalData, setClinicalData, setResult, hidePredict
   });
   
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  // const [result, setResult] = useState(null);
+  const [localResult, setLocalResult] = useState(null);
   const [validated, setValidated] = useState(false);
 
   // const handleInputChange = (e) => {
@@ -57,11 +58,12 @@ const PredictClinical = ({ clinicalData, setClinicalData, setResult, hidePredict
       console.log("Predict Clinical API URL:", process.env.REACT_APP_API_URL);
       console.log("Predict Clinical res",res.data);
       console.log("end")
+      setLocalResult(res.data);
       setResult(res.data);
       setClinicalData(submissionData); 
-      if (setResult) {
-        setResult(res.data);
-      }
+      // if (setResult) {
+      //   setResult(res.data);
+      // }
     } catch (err) {
       console.error(err);
       alert("Error: Could not connect to the diagnostic engine.");

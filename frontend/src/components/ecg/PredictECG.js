@@ -15,7 +15,8 @@ const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideB
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [result, setResult] = useState(null);
+  // const [result, setResult] = useState(null);
+  const [localResult, setLocalResult] = useState(null);
   const [error, setError] = useState(null);
 
   const handleFileChange = (e) => {
@@ -39,6 +40,7 @@ const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideB
     formData.append('file', file);
     try {
       const response = await axios.post(`${API_URL}/predict`, formData);
+      setLocalResult(response.data);
       setResult(response.data);
       setStage('result');
       
