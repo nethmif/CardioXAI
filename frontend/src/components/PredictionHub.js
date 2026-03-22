@@ -196,7 +196,11 @@ const PredictionHub = () => {
                   size="sm" 
                   onClick={handleCombinedPredict}
                   // disabled={!ecgFile || Object.keys(clinicalData).length === 0}
-                  disabled={!ecgResult || !clinicalResult}
+                  // disabled={!ecgResult || !clinicalResult}
+                  disabled={
+                    !ecgResult?.level2_prediction ||
+                    !clinicalResult?.clinical_prediction
+                  }
               >
                   Combined Risk Prediction
               </Button>
@@ -273,7 +277,7 @@ const PredictionHub = () => {
                 ecgFile={ecgFile}
                 setEcgFile={setEcgFile}
                 setResult={(res) => setEcgResult(res)}
-                hidePredictButton={sideBySide}
+                hidePredictButton={false}
                 isSideBySide={sideBySide}
               />
             </Card>
@@ -292,7 +296,7 @@ const PredictionHub = () => {
                 clinicalData={clinicalData}
                 setClinicalData={setClinicalData}
                 setResult={(res) => setClinicalResult(res)}
-                hidePredictButton={sideBySide}
+                hidePredictButton={false}
                 isSideBySide={sideBySide}
               />
             </Card>
@@ -311,7 +315,7 @@ const PredictionHub = () => {
                 ecgFile={ecgFile}
                 setEcgFile={setEcgFile}
                 setResult={(res) => setEcgResult(res)}
-                hidePredictButton={sideBySide}
+                hidePredictButton={false}
                 isSideBySide={sideBySide}
               />
             </Card>
@@ -324,7 +328,8 @@ const PredictionHub = () => {
                 clinicalData={clinicalData}
                 setClinicalData={setClinicalData}
                 setResult={(res) => setClinicalResult(res)}
-                hidePredictButton={sideBySide}
+                // hidePredictButton={sideBySide}
+                hidePredictButton={false}
                 isSideBySide={sideBySide}
               />
             </Card>
