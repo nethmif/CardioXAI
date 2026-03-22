@@ -198,7 +198,8 @@ const PredictionHub = () => {
                   // disabled={!ecgFile || Object.keys(clinicalData).length === 0}
                   // disabled={!ecgResult || !clinicalResult}
                   disabled={
-                    !ecgResult?.level2_prediction ||
+                    !ecgResult?.level2_prediction &&
+                    !clinicalResult?.prediction &&
                     !clinicalResult?.clinical_prediction
                   }
               >

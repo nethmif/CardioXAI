@@ -45,9 +45,9 @@ const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideB
       setStage('localResult');
       
       setEcgFile(file);
-      // if (setResult) {
-      //   setResult(response.data);
-      // }
+      if (setResult) {
+        setResult(response.data);
+      }
     } catch (err) {
       setError("Analysis failed. Ensure backend is running.");
     } finally {
