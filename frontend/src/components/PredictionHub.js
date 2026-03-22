@@ -161,7 +161,8 @@ const PredictionHub = () => {
       const res = await axios.post(`${API_URL}/fuse_predictions`, {
         // ecg_class: ecgResult.ecg_class,
         ecg_class: ["Acute MI", "History of MI", "Abnormal"].includes(ecgResult.level2_prediction) ? 1 : 0,
-        clinical_prediction: clinicalResult.clinical_prediction
+        // clinical_prediction: clinicalResult.clinical_prediction
+        clinical_prediction: Number(clinicalResult.clinical_prediction ?? clinicalResult.prediction)
       });
 
       setCombinedResult(res.data);
@@ -194,6 +195,7 @@ const PredictionHub = () => {
                   variant="success" 
                   size="sm" 
                   onClick={handleCombinedPredict}
+                  // disabled={!ecgFile || Object.keys(clinicalData).length === 0}
                   disabled={!ecgFile || Object.keys(clinicalData).length === 0}
               >
                   Combined Risk Prediction
