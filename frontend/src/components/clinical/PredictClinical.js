@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Row, Col, Button, Spinner, InputGroup } from 'react-bootstrap';
 import axios from 'axios';
 import ClinicalResultsView from './ClinicalResultsView';
