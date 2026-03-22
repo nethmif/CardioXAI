@@ -74,7 +74,7 @@ const PredictClinical = ({ clinicalData, setClinicalData, setResult, hidePredict
 
   return (
     <div className="clinical-container p-3">
-      {!result ? (
+      {!localResult ? (
         <Form noValidate validated={validated} onSubmit={handlePredict}>
           <h5 className="mb-4 border-bottom pb-2">Patient Clinical Data Entry</h5>
           
@@ -225,9 +225,9 @@ const PredictClinical = ({ clinicalData, setClinicalData, setResult, hidePredict
         </Form>
       ) : (
         <ClinicalResultsView 
-            result={result} 
+            result={localResult} 
             reset={() => {
-                setResult(null);
+                setLocalResult(null);
                 setValidated(false);
             }} 
         />

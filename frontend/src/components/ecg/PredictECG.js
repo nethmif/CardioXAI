@@ -99,20 +99,20 @@ const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideB
       
       pdf.setFontSize(11);
       pdf.setTextColor(0);
-      pdf.text(`Primary Category: ${result.level1_prediction}`, margin + 5, 135);
-      pdf.text(`Confidence Score: ${(result.level1_confidence * 100).toFixed(1)}%`, margin + 5, 142);
-      pdf.text(`Specific Diagnosis: ${result.level2_prediction}`, margin + 5, 152);
+      pdf.text(`Primary Category: ${localResult.level1_prediction}`, margin + 5, 135);
+      pdf.text(`Confidence Score: ${(localResult.level1_confidence * 100).toFixed(1)}%`, margin + 5, 142);
+      pdf.text(`Specific Diagnosis: ${localResult.level2_prediction}`, margin + 5, 152);
 
       // Explainability Section (Level 1 Heatmap)
       pdf.setFontSize(14);
       pdf.text("3. Visual Interpretability (Heatmaps)", margin, 175);
       pdf.setFontSize(10);
-      pdf.text(`Area of Focus (Triage - ${result.level1_prediction}):`, margin, 182);
-      pdf.addImage(result.heatmap_l1, 'PNG', margin, 185, contentWidth / 2 - 5, 50);
+      pdf.text(`Area of Focus (Triage - ${localResult.level1_prediction}):`, margin, 182);
+      pdf.addImage(localResult.heatmap_l1, 'PNG', margin, 185, contentWidth / 2 - 5, 50);
       
       // Explainability Section (Level 2 Heatmap)
-      pdf.text(`Area of Focus (Diagnosis - ${result.level2_prediction}):`, pageWidth / 2 + 5, 182);
-      pdf.addImage(result.heatmap_l2, 'PNG', pageWidth / 2 + 5, 185, contentWidth / 2 - 5, 50);
+      pdf.text(`Area of Focus (Diagnosis - ${localResult.level2_prediction}):`, pageWidth / 2 + 5, 182);
+      pdf.addImage(localResult.heatmap_l2, 'PNG', pageWidth / 2 + 5, 185, contentWidth / 2 - 5, 50);
 
       // Footer
       pdf.setFontSize(9);
@@ -171,7 +171,7 @@ const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideB
         </div>
       )}
 
-      {stage === 'result' && result && (
+      {stage === 'localResult' && localResult && (
         <div className="text-start">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fw-bold m-0 text-primary">Diagnostic Results</h5>
@@ -194,15 +194,15 @@ const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideB
               <Row className="g-4 align-items-center">
                 <Col md={isSideBySide ? 12 : 6}>
                   <div className="text-center bg-dark rounded border overflow-hidden">
-                    <img src={result.heatmap_l1} className="img-fluid" alt="L1 Heatmap" style={{ height: '220px', width: '100%', objectFit: 'fill' }} />
+                    <img src={localResult.heatmap_l1} className="img-fluid" alt="L1 Heatmap" style={{ height: '220px', width: '100%', objectFit: 'fill' }} />
                   </div>
                 </Col>
                 <Col md={isSideBySide ? 12 : 6}>
                   <div className="ps-md-3">
                     <small className="text-uppercase fw-bold text-muted d-block mb-1">Primary Classification</small>
-                    <div className="h4 fw-bold text-dark m-0">{result.level1_prediction}</div>
+                    <div className="h4 fw-bold text-dark m-0">{localResult.level1_prediction}</div>
                     <small className="text-uppercase fw-bold text-muted d-block mt-3 mb-1">Model Confidence</small>
-                    <div className="h4 fw-bold text-primary m-0">{(result.level1_confidence * 100).toFixed(1)}%</div>
+                    <div className="h4 fw-bold text-primary m-0">{(localResult.level1_confidence * 100).toFixed(1)}%</div>
                   </div>
                 </Col>
               </Row>
@@ -217,14 +217,14 @@ const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideB
               <Row className="g-4 align-items-center">
                 <Col md={isSideBySide ? 12 : 6}>
                   <div className="text-center bg-dark rounded border overflow-hidden">
-                    <img src={result.heatmap_l2} className="img-fluid" alt="L2 Heatmap" style={{ height: '220px', width: '100%', objectFit: 'fill' }} />
+                    <img src={localResult.heatmap_l2} className="img-fluid" alt="L2 Heatmap" style={{ height: '220px', width: '100%', objectFit: 'fill' }} />
                   </div>
                 </Col>
                 <Col md={isSideBySide ? 12 : 6}>
                   <div className="ps-md-3">
                     <div className="p-3 rounded bg-light border-start border-primary border-4">
                       <small className="text-uppercase fw-bold text-muted d-block mb-1">Detailed Diagnosis</small>
-                      <div className="h4 fw-bold text-primary m-0">{result.level2_prediction}</div>
+                      <div className="h4 fw-bold text-primary m-0">{localResult.level2_prediction}</div>
                     </div>
                   </div>
                 </Col>
