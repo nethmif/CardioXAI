@@ -334,6 +334,20 @@ const handleCombinedPredict = async () => {
       {/* Split view (side-by-side) */}
       {sideBySide && (
         <Row className="justify-content-center g-4">
+          {/* Combined result */}
+          {combinedResult && (
+            <Col md={12}>
+              <Card className="shadow-sm p-4 mt-4">
+                <h4>Combined Heart Disease Prediction</h4>
+                {/* <p><strong>Combined Prediction: {combinedResult.combined_prediction} ({(combinedResult.combined_probability*100).toFixed(1)}%)</strong></p> */}
+                <p>
+                  <strong>
+                    Combined Prediction: {combinedResult.label}
+                  </strong>
+                </p>
+              </Card>
+            </Col>
+          )}
           <Col md={6}>
             <Card className="shadow-sm p-4 border-0">
               <h4 className="border-bottom pb-2 mb-2">ECG Analysis</h4>
@@ -363,18 +377,6 @@ const handleCombinedPredict = async () => {
               />
             </Card>
           </Col>
-
-          {/* Combined result */}
-          {combinedResult && (
-            <Col md={12}>
-              <Card className="shadow-sm p-4 mt-4">
-                <h4>Combined Heart Disease Prediction</h4>
-                <p>ECG: {combinedResult.ecg_prediction} ({(combinedResult.ecg_probability*100).toFixed(1)}%)</p>
-                <p>Clinical: {combinedResult.clinical_prediction} ({(combinedResult.clinical_probability*100).toFixed(1)}%)</p>
-                <p><strong>Combined Prediction: {combinedResult.combined_prediction} ({(combinedResult.combined_probability*100).toFixed(1)}%)</strong></p>
-              </Card>
-            </Col>
-          )}
         </Row>
       )}
     </Container>
