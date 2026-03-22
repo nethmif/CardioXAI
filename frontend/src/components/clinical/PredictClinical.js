@@ -5,7 +5,7 @@ import ClinicalResultsView from './ClinicalResultsView';
 
 // const PredictClinical = () => {
 // const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = false, isSideBySide = false}) => {
-const PredictClinical = ({ clinicalData, setClinicalData, setResult, hidePredictButton, isSideBySide }) => {
+const PredictClinical = ({ clinicalData, setClinicalData, result, setResult, hidePredictButton, isSideBySide }) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
   const [formData, setFormData] = useState({
@@ -17,6 +17,13 @@ const PredictClinical = ({ clinicalData, setClinicalData, setResult, hidePredict
   // const [result, setResult] = useState(null);
   const [localResult, setLocalResult] = useState(null);
   const [validated, setValidated] = useState(false);
+
+  useEffect(() => {
+    if (result) {
+      setLocalResult(result);
+      // setStage('result');
+    }
+  }, [result]);
 
   // const handleInputChange = (e) => {
   //   const { name, value } = e.target;

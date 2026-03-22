@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 
 // const PredictECG = ({ isSideBySide }) => {
 // const PredictECG = ({ ecgFile, setEcgFile, hidePredictButton = false, isSideBySide = false}) => {
-const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideBySide }) => {
+const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton, isSideBySide }) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
   console.log("Predict ECG API URL:", process.env.REACT_APP_API_URL);
 
@@ -18,6 +18,13 @@ const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideB
   // const [result, setResult] = useState(null);
   const [localResult, setLocalResult] = useState(null);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (result) {
+      setLocalResult(result);
+      setStage('result');
+    }
+  }, [result]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
