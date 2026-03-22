@@ -124,7 +124,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Container, Row, Col, Card, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Spinner } from 'react-bootstrap';
 import PredictECG from './ecg/PredictECG';
 import PredictClinical from './clinical/PredictClinical';
 import axios from 'axios';
