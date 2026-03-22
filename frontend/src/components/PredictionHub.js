@@ -150,28 +150,58 @@ const PredictionHub = () => {
     setCombinedResult(null);
   }, [location.key]); 
 
-  // Combined prediction request
-  const handleCombinedPredict = async () => {
-    if (!ecgResult || !clinicalResult) {
-      alert("Please run both ECG and Clinical predictions first!");
+const handleCombinedPredict = async () => {
+  try {
+    if (!ecgFile) {
+      alert("Please upload an ECG image.");
       return;
     }
 
-    try {
-      const res = await axios.post(`${API_URL}/fuse_predictions`, {
-        // ecg_class: ecgResult.ecg_class,
-        ecg_class: ["Acute MI", "History of MI", "Abnormal"].includes(ecgResult.level2_prediction) ? 1 : 0,
-        // clinical_prediction: clinicalResult.clinical_prediction
-        clinical_prediction: Number(clinicalResult.clinical_prediction ?? clinicalResult.prediction)
-      });
-
-      setCombinedResult(res.data);
-    } catch (err) {
-      console.error(err);
-      alert("Fusion failed");
+    if (!clinicalData || Object.keys(clinicalData).length === 0) {
+      alert("Please enter clinical features.");
+      return;
     }
-  };
 
+    const ecgFormData = new FormData();
+    ecgFormData.append("file", ecgFile);
+
+    const ecgRes = await axios.post(`${API_URL}/predict`, ecgFormData);
+
+    const clinicalRes = await axios.post(
+      `${API_URL}/predict_clinical`,
+      clinicalData
+    );
+
+    // Save results (for UI display)
+    setEcgResult(ecgRes.data);
+    setClinicalResult(clinicalRes.data);
+
+    const ecgClass =
+      ["Acute MI", "History of MI", "Abnormal"].includes(
+        ecgRes.data?.level2_prediction
+      )
+        ? 1
+        : 0;
+
+    const clinicalClass = Number(
+      clinicalRes.data?.clinical_prediction ??
+      clinicalRes.data?.prediction ??
+      0
+    );
+
+    // 🚀 5. Call fusion
+    const fuseRes = await axios.post(`${API_URL}/fuse_predictions`, {
+      ecg_class: ecgClass,
+      clinical_prediction: clinicalClass,
+    });
+
+    setCombinedResult(fuseRes.data);
+
+  } catch (err) {
+    console.error(err);
+    alert("Prediction failed. Please check inputs.");
+  }
+};
   return (
     <Container className="py-4">
       {/* Header Controls */}
@@ -197,11 +227,7 @@ const PredictionHub = () => {
                   onClick={handleCombinedPredict}
                   // disabled={!ecgFile || Object.keys(clinicalData).length === 0}
                   // disabled={!ecgResult || !clinicalResult}
-                  disabled={
-                    !ecgResult?.level2_prediction &&
-                    !clinicalResult?.prediction &&
-                    !clinicalResult?.clinical_prediction
-                  }
+                  disabled={false}
               >
                   Combined Risk Prediction
               </Button>
