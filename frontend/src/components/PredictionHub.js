@@ -144,6 +144,8 @@ const PredictionHub = () => {
   const [ecgResult, setEcgResult] = useState(null);
   const [clinicalResult, setClinicalResult] = useState(null);
 
+  const [loadingCombined, setLoadingCombined] = useState(false);
+
   useEffect(() => {
     setView('selection');
     setSideBySide(false);
@@ -161,6 +163,8 @@ const handleCombinedPredict = async () => {
       alert("Please enter clinical features.");
       return;
     }
+
+    setLoadingCombined(true);
 
     const ecgFormData = new FormData();
     ecgFormData.append("file", ecgFile);
@@ -189,7 +193,6 @@ const handleCombinedPredict = async () => {
       0
     );
 
-    // 🚀 5. Call fusion
     const fuseRes = await axios.post(`${API_URL}/fuse_predictions`, {
       ecg_class: ecgClass,
       clinical_prediction: clinicalClass,
@@ -200,6 +203,8 @@ const handleCombinedPredict = async () => {
   } catch (err) {
     console.error(err);
     alert("Prediction failed. Please check inputs.");
+  } finally{
+    setLoadingCombined(false);
   }
 };
   return (
@@ -342,7 +347,7 @@ const handleCombinedPredict = async () => {
                 {/* <p><strong>Combined Prediction: {combinedResult.combined_prediction} ({(combinedResult.combined_probability*100).toFixed(1)}%)</strong></p> */}
                 <p>
                   <strong>
-                    Combined Prediction: {combinedResult.label}
+                    {combinedResult.label}
                   </strong>
                 </p>
               </Card>
