@@ -4,7 +4,8 @@ import axios from 'axios';
 import ClinicalResultsView from './ClinicalResultsView';
 
 // const PredictClinical = () => {
-const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = false, isSideBySide = false}) => {
+// const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = false, isSideBySide = false}) => {
+const PredictClinical = ({ clinicalData, setClinicalData, setResult, hidePredictButton, isSideBySide }) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
   const [formData, setFormData] = useState({
@@ -58,9 +59,9 @@ const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = fa
       console.log("end")
       setResult(res.data);
       setClinicalData(submissionData); 
-      // if (setResult) {
-      //   setResult(res.data);
-      // }
+      if (setResult) {
+        setResult(res.data);
+      }
     } catch (err) {
       console.error(err);
       alert("Error: Could not connect to the diagnostic engine.");

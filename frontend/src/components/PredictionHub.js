@@ -196,7 +196,7 @@ const PredictionHub = () => {
                   size="sm" 
                   onClick={handleCombinedPredict}
                   // disabled={!ecgFile || Object.keys(clinicalData).length === 0}
-                  disabled={!ecgFile || Object.keys(clinicalData).length === 0}
+                  disabled={!ecgResult || !clinicalResult}
               >
                   Combined Risk Prediction
               </Button>
