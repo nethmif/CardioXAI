@@ -342,7 +342,7 @@ const handleCombinedPredict = async () => {
                 ecgFile={ecgFile}
                 setEcgFile={setEcgFile}
                 setResult={(res) => setEcgResult(res)}
-                hidePredictButton={false}
+                hidePredictButton={true}
                 isSideBySide={sideBySide}
               />
             </Card>
@@ -356,7 +356,7 @@ const handleCombinedPredict = async () => {
                 setClinicalData={setClinicalData}
                 setResult={(res) => setClinicalResult(res)}
                 // hidePredictButton={sideBySide}
-                hidePredictButton={false}
+                hidePredictButton={true}
                 isSideBySide={sideBySide}
               />
             </Card>

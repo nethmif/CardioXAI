@@ -171,7 +171,7 @@ const PredictECG = ({ ecgFile, setEcgFile, setResult, hidePredictButton, isSideB
         </div>
       )}
 
-      {stage === 'localResult' && localResult && (
+      {stage === 'result' && localResult && (
         <div className="text-start">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fw-bold m-0 text-primary">Diagnostic Results</h5>
