@@ -1283,79 +1283,29 @@ def get_dice_explanation(dice_scenarios, prediction):
     )
     return response.choices[0].message.content
 
-class CombinedInput(BaseModel):
-    age: float
-    sex: float
-    cp: float
-    trestbps: float
-    chol: float
-    fbs: float
-    restecg: float
-    thalach: float
-    exang: float
-    oldpeak: float
-    ca: float
-    thal: float
-    slope: float
+@app.post("/fuse_predictions")
+def fuse_predictions(data: dict):
 
-@app.post("/predict_combined")
-async def predict_combined(file: UploadFile = File(...), 
-                           age: float = Form(...),
-                           sex: float = Form(...),
-                           cp: float = Form(...),
-                           trestbps: float = Form(...),
-                           chol: float = Form(...),
-                           fbs: float = Form(...),
-                           restecg: float = Form(...),
-                           thalach: float = Form(...),
-                           exang: float = Form(...),
-                           oldpeak: float = Form(...),
-                           ca: float = Form(...),
-                           thal: float = Form(...),
-                           slope: float = Form(...)):
-    try:
-        # ECG prediction
-        data = await file.read()
-        image = Image.open(io.BytesIO(data)).convert('RGB')
-        img_np = np.array(image)
-        input_tensor = prepare_ecg_for_model(img_np)
+    ecg_class = data["ecg_class"]
+    clinical_pred = data["clinical_prediction"]
 
-        ensemble_out1 = []
-        with torch.no_grad():
-            for m in fold_models:
-                o1, _ = m(input_tensor)
-                ensemble_out1.append(torch.sigmoid(o1).cpu().numpy())
-        prob_ecg = np.mean(ensemble_out1)
-        pred_ecg = int(prob_ecg > 0.5)
+    ecg_has_disease = ecg_class != 0
+    clinical_has_disease = clinical_pred == 1
 
-        # Clinical prediction
-        clinical_dict = {
-            "age": age, "sex": sex, "cp": cp, "trestbps": trestbps, "chol": chol,
-            "fbs": fbs, "restecg": restecg, "thalach": thalach, "exang": exang,
-            "oldpeak": oldpeak, "ca": ca, "thal": thal, "slope": slope
-        }
-        df_clinical = pd.DataFrame([clinical_dict])
-        df_clinical = df_clinical.applymap(safe_float).astype(np.float32)
-        prob_clinical = float(clinical_model.predict_proba(df_clinical)[0][1])
-        pred_clinical = int(prob_clinical > 0.5)
+    if ecg_has_disease and clinical_has_disease:
+        final = 1
+        label = "Heart Disease"
+    elif (not ecg_has_disease) and (not clinical_has_disease):
+        final = 0
+        label = "No Heart Disease"
+    else:
+        final = 1
+        label = "Heart Disease (Suspicious Case)"
 
-        # Soft voting
-        final_prob = (prob_ecg + prob_clinical) / 2
-        final_pred = int(final_prob > 0.5)
-
-        return {
-            "ecg_prediction": pred_ecg,
-            "ecg_probability": prob_ecg,
-            "clinical_prediction": pred_clinical,
-            "clinical_probability": prob_clinical,
-            "combined_prediction": final_pred,
-            "combined_probability": final_prob
-        }
-
-    except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        return {"error": str(e)}
+    return {
+        "combined_prediction": final,
+        "label": label
+    }
 
 if __name__ == "__main__":
     import uvicorn

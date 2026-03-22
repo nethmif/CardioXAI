@@ -40,6 +40,11 @@ const PredictECG = ({ ecgFile, setEcgFile, hidePredictButton = false, isSideBySi
       const response = await axios.post(`${API_URL}/predict`, formData);
       setResult(response.data);
       setStage('result');
+      
+      setEcgFile(file);
+      if (setResult) {
+        setResult(response.data);
+      }
     } catch (err) {
       setError("Analysis failed. Ensure backend is running.");
     } finally {

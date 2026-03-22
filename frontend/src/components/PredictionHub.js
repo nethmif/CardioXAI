@@ -141,6 +141,9 @@ const PredictionHub = () => {
 
   const location = useLocation();
 
+  const [ecgResult, setEcgResult] = useState(null);
+  const [clinicalResult, setClinicalResult] = useState(null);
+
   useEffect(() => {
     setView('selection');
     setSideBySide(false);
@@ -149,33 +152,22 @@ const PredictionHub = () => {
 
   // Combined prediction request
   const handleCombinedPredict = async () => {
-    if (!ecgFile) return alert("Upload ECG image first!");
-    const formData = new FormData();
-    formData.append("file", ecgFile);
-    // Object.keys(clinicalData).forEach(key => formData.append(key, clinicalData[key]));
-    const requiredFields = [
-      "age","sex","cp","trestbps","chol","fbs",
-      "restecg","thalach","exang","oldpeak",
-      "ca","thal","slope"
-    ];
-
-    for (let key of requiredFields) {
-      if (!(key in clinicalData)) {
-        alert(`Missing clinical field: ${key}`);
-        return;
-      }
-      formData.append(key, clinicalData[key]);
+    if (!ecgResult || !clinicalResult) {
+      alert("Please run both ECG and Clinical predictions first!");
+      return;
     }
+
     try {
-      const res = await axios.post(`${API_URL}/predict_combined`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+      const res = await axios.post(`${API_URL}/fuse_predictions`, {
+        // ecg_class: ecgResult.ecg_class,
+        ecg_class: ["Acute MI", "History of MI", "Abnormal"].includes(ecgResult.level2_prediction) ? 1 : 0,
+        clinical_prediction: clinicalResult.clinical_prediction
       });
+
       setCombinedResult(res.data);
-      console.log("ECG FILE:", ecgFile);
-      console.log("CLINICAL DATA:", clinicalData);
     } catch (err) {
       console.error(err);
-      alert("Error: Could not get combined prediction");
+      alert("Fusion failed");
     }
   };
 
@@ -274,7 +266,14 @@ const PredictionHub = () => {
           <Col md={8}>
             <Card className="shadow-sm p-4 border-0 mb-4">
               <h4 className="border-bottom pb-2 mb-4">ECG Analysis</h4>
-              <PredictECG ecgFile={ecgFile} setEcgFile={setEcgFile} hidePredictButton={sideBySide} isSideBySide={sideBySide}/>
+              {/* <PredictECG ecgFile={ecgFile} setEcgFile={setEcgFile} hidePredictButton={sideBySide} isSideBySide={sideBySide}/> */}
+              <PredictECG
+                ecgFile={ecgFile}
+                setEcgFile={setEcgFile}
+                setResult={(res) => setEcgResult(res)}
+                hidePredictButton={sideBySide}
+                isSideBySide={sideBySide}
+              />
             </Card>
           </Col>
         </Row>
@@ -286,7 +285,14 @@ const PredictionHub = () => {
           <Col md={8}>
             <Card className="shadow-sm p-4 border-0 mb-4">
               <h4 className="border-bottom pb-2 mb-4">Clinical Features</h4>
-              <PredictClinical clinicalData={clinicalData} setClinicalData={setClinicalData} hidePredictButton={sideBySide}   isSideBySide={sideBySide}/>
+              {/* <PredictClinical clinicalData={clinicalData} setClinicalData={setClinicalData} hidePredictButton={sideBySide}   isSideBySide={sideBySide}/> */}
+              <PredictClinical
+                clinicalData={clinicalData}
+                setClinicalData={setClinicalData}
+                setResult={(res) => setClinicalResult(res)}
+                hidePredictButton={sideBySide}
+                isSideBySide={sideBySide}
+              />
             </Card>
           </Col>
         </Row>
@@ -298,13 +304,27 @@ const PredictionHub = () => {
           <Col md={6}>
             <Card className="shadow-sm p-4 border-0">
               <h4 className="border-bottom pb-2 mb-2">ECG Analysis</h4>
-              <PredictECG ecgFile={ecgFile} setEcgFile={setEcgFile} hidePredictButton={sideBySide} isSideBySide={sideBySide}/>
+              {/* <PredictECG ecgFile={ecgFile} setEcgFile={setEcgFile} hidePredictButton={sideBySide} isSideBySide={sideBySide}/> */}
+              <PredictECG
+                ecgFile={ecgFile}
+                setEcgFile={setEcgFile}
+                setResult={(res) => setEcgResult(res)}
+                hidePredictButton={sideBySide}
+                isSideBySide={sideBySide}
+              />
             </Card>
           </Col>
           <Col md={6}>
             <Card className="shadow-sm p-4 border-0">
               <h4 className="border-bottom pb-2 mb-2">Clinical Features</h4>
-              <PredictClinical clinicalData={clinicalData} setClinicalData={setClinicalData} hidePredictButton={sideBySide} isSideBySide={sideBySide}/>
+              {/* <PredictClinical clinicalData={clinicalData} setClinicalData={setClinicalData} hidePredictButton={sideBySide} isSideBySide={sideBySide}/> */}
+              <PredictClinical
+                clinicalData={clinicalData}
+                setClinicalData={setClinicalData}
+                setResult={(res) => setClinicalResult(res)}
+                hidePredictButton={sideBySide}
+                isSideBySide={sideBySide}
+              />
             </Card>
           </Col>
 
