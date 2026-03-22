@@ -226,15 +226,30 @@ const handleCombinedPredict = async () => {
               // <Button variant="success" size="sm" onClick={handleCombinedPredict}>
               //   Combined Risk Prediction
               // </Button>
+              // <Button 
+              //     variant="success" 
+              //     size="sm" 
+              //     onClick={handleCombinedPredict}
+              //     // disabled={!ecgFile || Object.keys(clinicalData).length === 0}
+              //     // disabled={!ecgResult || !clinicalResult}
+              //     disabled={false}
+              // >
+              //     Combined Risk Prediction
+              // </Button>
               <Button 
-                  variant="success" 
-                  size="sm" 
-                  onClick={handleCombinedPredict}
-                  // disabled={!ecgFile || Object.keys(clinicalData).length === 0}
-                  // disabled={!ecgResult || !clinicalResult}
-                  disabled={false}
+                variant="success" 
+                size="sm" 
+                onClick={handleCombinedPredict}
+                disabled={loadingCombined}
               >
-                  Combined Risk Prediction
+                {loadingCombined ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    Analyzing...
+                  </>
+                ) : (
+                  "Combined Risk Prediction"
+                )}
               </Button>
             )}
           </div>
