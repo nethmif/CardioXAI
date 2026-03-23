@@ -165,12 +165,12 @@ const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton,
           </div>
 
           <div className="d-flex justify-content-between align-items-center">
-            <Button variant="outline-secondary" size="sm" onClick={() => setStage('upload')}>Back</Button>
+            {/* <Button variant="outline-secondary" size="sm" onClick={() => setStage('upload')}>Back</Button> */}
             {/* <Button variant="primary" size="sm" className="px-3" onClick={handleUpload} disabled={loading}>
               {loading ? <Spinner size="sm" /> : "Predict & Explain"}
             </Button> */}
             {!hidePredictButton && (
-              <div className="d-flex justify-content-between align-items-center">
+              <div className="d-flex justify-content-end align-items-center gap-2">
                 <Button variant="outline-secondary" size="sm" onClick={() => setStage('upload')}>Back</Button>
                 <Button variant="primary" size="sm" className="px-3" onClick={handleUpload} disabled={loading}>
                   {loading ? <Spinner size="sm" /> : "Predict & Explain"}
