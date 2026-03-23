@@ -357,13 +357,17 @@ const handleCombinedPredict = async () => {
           {/* Combined result */}
           {combinedResult && (
             <Col md={12}>
-              <Card className="shadow-sm p-4 mt-4">
+              <Card 
+                className={`shadow-sm p-4 mt-4 ${
+                  combinedResult.label.includes("No") 
+                    ? "bg-success text-white" 
+                    : "bg-danger text-white"
+                }`}
+              >
                 <h4>Combined Heart Disease Prediction</h4>
-                {/* <p><strong>Combined Prediction: {combinedResult.combined_prediction} ({(combinedResult.combined_probability*100).toFixed(1)}%)</strong></p> */}
+
                 <p>
-                  <strong>
-                    {combinedResult.label}
-                  </strong>
+                  <strong>{combinedResult.label}</strong>
                 </p>
               </Card>
             </Col>
