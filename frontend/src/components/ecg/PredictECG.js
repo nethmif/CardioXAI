@@ -48,9 +48,12 @@ const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton,
     try {
       const response = await axios.post(`${API_URL}/predict`, formData);
       setLocalResult(response.data);
-      setResult(response.data);
-      setStage('localResult');
+      // setResult(response.data);
+      // setStage('result');
       
+      // setEcgFile(file);
+      if (setResult) setResult(response.data);
+      setStage('result');
       setEcgFile(file);
       if (setResult) {
         setResult(response.data);
