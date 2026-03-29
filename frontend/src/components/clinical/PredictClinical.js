@@ -3,8 +3,6 @@ import { Form, Row, Col, Button, Spinner, InputGroup } from 'react-bootstrap';
 import axios from 'axios';
 import ClinicalResultsView from './ClinicalResultsView';
 
-// const PredictClinical = () => {
-// const PredictClinical = ({ clinicalData, setClinicalData, hidePredictButton = false, isSideBySide = false}) => {
 const PredictClinical = ({ clinicalData, setClinicalData, result, setResult, hidePredictButton, isSideBySide }) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
@@ -14,21 +12,15 @@ const PredictClinical = ({ clinicalData, setClinicalData, result, setResult, hid
   });
   
   const [loading, setLoading] = useState(false);
-  // const [result, setResult] = useState(null);
   const [localResult, setLocalResult] = useState(null);
   const [validated, setValidated] = useState(false);
 
   useEffect(() => {
     if (result) {
       setLocalResult(result);
-      // setStage('result');
     }
   }, [result]);
 
-  // const handleInputChange = (e) => {
-  //   const { name, value } = e.target;
-  //   setFormData(prev => ({ ...prev, [name]: value }));
-  // };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -60,7 +52,6 @@ const PredictClinical = ({ clinicalData, setClinicalData, result, setResult, hid
         submissionData[key] = Number(formData[key]);
       });
       console.log(submissionData);
-      // const res = await axios.post('http://localhost:8000/predict_clinical', submissionData);
       const res = await axios.post(`${API_URL}/predict_clinical`, submissionData);
       console.log("Predict Clinical API URL:", process.env.REACT_APP_API_URL);
       console.log("Predict Clinical res",res.data);
@@ -68,9 +59,6 @@ const PredictClinical = ({ clinicalData, setClinicalData, result, setResult, hid
       setLocalResult(res.data);
       setResult(res.data);
       setClinicalData(submissionData); 
-      // if (setResult) {
-      //   setResult(res.data);
-      // }
     } catch (err) {
       console.error(err);
       alert("Error: Could not connect to the diagnostic engine.");
@@ -207,16 +195,6 @@ const PredictClinical = ({ clinicalData, setClinicalData, result, setResult, hid
             </Col>
           </Row>
 
-          {/* <div className="d-flex justify-content-end mt-4">
-            <Button variant="primary" type="submit" disabled={loading} className="px-5 py-2 fw-bold shadow">
-              {loading ? (
-                <>
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Analyzing...
-                </>
-              ) : "Predict & Explain Clinical Risk"}
-            </Button>
-          </div> */}
           {!hidePredictButton && (
             <div className="d-flex justify-content-end mt-4">
               <Button variant="primary" type="submit" disabled={loading} className="px-5 py-2 fw-bold shadow">

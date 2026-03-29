@@ -11,13 +11,11 @@ const ClinicalResultsView = ({ result, reset }) => {
   const section1Ref = useRef();
   const section2Ref = useRef();
   const section3Ref = useRef();
-  // const section4Ref = useRef();
   const section5Ref = useRef();
 
   const handleDownloadPDF = async () => {
     setIsExporting(true);
     const pdf = new jsPDF('p', 'mm', 'a4'); 
-    // const sections = [section1Ref, section2Ref, section3Ref, section4Ref, section5Ref];
     const sections = [section1Ref, section2Ref, section3Ref, section5Ref];
 
     
@@ -188,25 +186,6 @@ const ClinicalResultsView = ({ result, reset }) => {
           </Row>
         </Tab>
 
-        {/* Global Analysis*/}
-        {/* <Tab eventKey="global" title="Population Level Insights">
-          <Card className="border-0 shadow-sm mt-3">
-            <Card.Header className="bg-white fw-bold">  Common Risk Factors Observed Across Patients</Card.Header>
-            <Card.Body className="text-center">
-              <div className="alert alert-info py-2 small text-start mb-3">
-                This view summarizes which clinical factors most commonly influence cardiac risk across the entire patient population.  
-                It helps clinicians verify whether this patient’s risk profile aligns with known population trends.
-              </div>
-              <img src={result.summary_plot} className="img-fluid" alt="Summary Plot" />
-              <div className="text-start small text-muted">
-                <ReactMarkdown>
-                  {result.summary_explanation}
-                </ReactMarkdown>
-              </div>
-            </Card.Body>
-          </Card>
-        </Tab> */}
-
         {/* Counterfactuals */}
         <Tab eventKey="dice" title="Risk Reduction Scenarios">
           <Card className="border-0 shadow-sm mt-3">
@@ -270,18 +249,6 @@ const ClinicalResultsView = ({ result, reset }) => {
               <ReactMarkdown>{result.lime_explanation}</ReactMarkdown>
             </div>
         </div>
-
-        {/* <div ref={section4Ref} className="p-5 bg-white" style={{ width: '800px', display: 'none' }}>
-            <h4 className="border-bottom pb-2 mb-4" style={{color: '#0d6efd'}}>3. Population Level Insights</h4>
-            <div className="alert alert-info py-2 small text-start mb-3">
-                This view summarizes which clinical factors most commonly influence cardiac risk across the entire patient population.  
-                It helps clinicians verify whether this patient’s risk profile aligns with known population trends.
-            </div>
-            <img src={result.summary_plot} className="img-fluid border p-2" alt="Global" />
-            <div className="small text-muted">
-              <ReactMarkdown>{result.summary_explanation}</ReactMarkdown>
-            </div>
-        </div> */}
 
         <div ref={section5Ref} className="p-5 bg-white" style={{ width: '800px', display: 'none' }}>
             <h4 className="border-bottom pb-2 mb-4" style={{color: '#0d6efd'}}>3. Risk Reduction Scenarios</h4>

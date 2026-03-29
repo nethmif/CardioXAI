@@ -3,8 +3,6 @@ import { Form, Button, Alert, Spinner, Card, Row, Col } from 'react-bootstrap';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 
-// const PredictECG = ({ isSideBySide }) => {
-// const PredictECG = ({ ecgFile, setEcgFile, hidePredictButton = false, isSideBySide = false}) => {
 const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton, isSideBySide }) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
   console.log("Predict ECG API URL:", process.env.REACT_APP_API_URL);
@@ -15,7 +13,6 @@ const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton,
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  // const [result, setResult] = useState(null);
   const [localResult, setLocalResult] = useState(null);
   const [error, setError] = useState(null);
 
@@ -48,10 +45,7 @@ const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton,
     try {
       const response = await axios.post(`${API_URL}/predict`, formData);
       setLocalResult(response.data);
-      // setResult(response.data);
-      // setStage('result');
-      
-      // setEcgFile(file);
+
       if (setResult) setResult(response.data);
       setStage('result');
       setEcgFile(file);
@@ -166,12 +160,9 @@ const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton,
 
           <div className="d-flex justify-content-between align-items-center">
             <Button variant="outline-secondary" size="sm" onClick={() => setStage('upload')}>Back</Button>
-            {/* <Button variant="primary" size="sm" className="px-3" onClick={handleUpload} disabled={loading}>
-              {loading ? <Spinner size="sm" /> : "Predict & Explain"}
-            </Button> */}
+
             {!hidePredictButton && (
               <>
-                {/* <Button variant="outline-secondary" size="sm" onClick={() => setStage('upload')}>Back</Button> */}
                 <Button variant="primary" size="sm" className="px-3" onClick={handleUpload} disabled={loading}>
                   {loading ? <Spinner size="sm" /> : "Predict & Explain"}
                 </Button>
