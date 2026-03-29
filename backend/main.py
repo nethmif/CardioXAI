@@ -36,7 +36,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+print(os.getenv("OPENAI_API_KEY"))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 n_splits = 5
 fold_models = []
