@@ -25,6 +25,7 @@ from fastapi import Form
 import os
 
 load_dotenv()      
+print("DEBUG - OpenAI key detected:", os.getenv("OPENAI_API_KEY"))
 
 # client = OpenAI()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -180,7 +181,8 @@ async def predict_clinical(data: ClinicalInput):
         
         raw_values = np.array([[float(input_dict[k]) for k in correct_order]], dtype=np.float32)
         df = pd.DataFrame(raw_values, columns=correct_order)
-        df = df.applymap(safe_float).astype(np.float32)
+        # df = df.applymap(safe_float).astype(np.float32)
+        df = df.map(safe_float).astype(np.float32)
 
         dice_df_clean = dice_train_df[correct_order + ['target']].apply(pd.to_numeric, errors='coerce').dropna().astype(np.float32)
 

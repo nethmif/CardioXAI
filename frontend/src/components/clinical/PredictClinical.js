@@ -4,6 +4,7 @@ import axios from 'axios';
 import ClinicalResultsView from './ClinicalResultsView';
 
 const PredictClinical = ({ clinicalData, setClinicalData, result, setResult, hidePredictButton, isSideBySide }) => {
+  
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
   const [formData, setFormData] = useState({
@@ -23,7 +24,7 @@ const PredictClinical = ({ clinicalData, setClinicalData, result, setResult, hid
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
+    console.log("API_URL:", API_URL);
     const updated = { ...formData, [name]: value };
     setFormData(updated);
 
