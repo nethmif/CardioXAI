@@ -29,14 +29,27 @@ const PredictionHub = () => {
   }, [location.key]); 
 
 const handleCombinedPredict = async () => {
+  setCombinedResult(null);
+  setEcgResult(null);
+  setClinicalResult(null);
   try {
+    const requiredFields = [
+      "age", "sex", "cp", "trestbps", "chol",
+      "fbs", "restecg", "thalach", "exang",
+      "oldpeak", "slope", "ca", "thal"
+    ];
+
+    const missingFields = requiredFields.filter(
+      f => clinicalData[f] === undefined || clinicalData[f] === null || isNaN(clinicalData[f])
+    );
+
     if (!ecgFile) {
       alert("Please upload an ECG image.");
       return;
     }
 
-    if (!clinicalData || Object.keys(clinicalData).length === 0) {
-      alert("Please enter clinical features.");
+    if (missingFields.length > 0) {
+      alert(`Please fill all clinical fields before combined prediction:\n${missingFields.join(", ")}`);
       return;
     }
 

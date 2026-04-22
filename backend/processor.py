@@ -14,11 +14,13 @@ def process_ecg_signal(img, target_size=(224, 224)):
     if y_end <= y_start: y_end = h_img
     cropped = img[y_start:y_end, :]
 
-    gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(cropped, cv2.COLOR_RGB2GRAY)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     resized = cv2.resize(binary, target_size, interpolation=cv2.INTER_AREA)
-    return cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
+    resized_rgb = cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
+
+    return resized_rgb, gray
 
 inference_transform = transforms.Compose([
     transforms.ToPILImage(),

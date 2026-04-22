@@ -30,7 +30,8 @@ const PredictClinical = ({ clinicalData, setClinicalData, result, setResult, hid
 
     const numericData = {};
     Object.keys(updated).forEach(k => {
-      numericData[k] = Number(updated[k]);
+      // numericData[k] = Number(updated[k]);
+      numericData[k] = updated[k] === "" ? null : Number(updated[k]);
     });
 
     setClinicalData(numericData);

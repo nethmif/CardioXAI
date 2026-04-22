@@ -31,6 +31,7 @@ const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton,
       return;
     }
     setError(null);
+    setLocalResult(null);
     setFile(selectedFile);
     setEcgFile(selectedFile);
     setFileDetails({ name: selectedFile.name, size: (selectedFile.size / 1024).toFixed(2) + " KB", type: selectedFile.type });
@@ -44,16 +45,28 @@ const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton,
     formData.append('file', file);
     try {
       const response = await axios.post(`${API_URL}/predict`, formData);
-      setLocalResult(response.data);
 
+      if (response.data.error) {
+        setError(response.data.error);
+        setLocalResult(null);
+        setStage("upload"); 
+        return;
+      }
+
+      setError(null);
+      setLocalResult(response.data);
       if (setResult) setResult(response.data);
-      setStage('result');
+      setStage("result");
       setEcgFile(file);
       if (setResult) {
         setResult(response.data);
       }
     } catch (err) {
-      setError("Analysis failed. Ensure backend is running.");
+      if (err.response && err.response.data) {
+        setError(err.response.data.detail || err.response.data.error || "Invalid ECG image uploaded.");
+      } else {
+        setError("Analysis failed. Ensure backend is running.");
+      }
     } finally {
       setLoading(false);
     }
@@ -145,6 +158,7 @@ const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton,
       {stage === 'preview' && (
         <div className="p-3 border rounded-3 bg-white shadow-sm">
           <div className="small text-muted mb-2">
+            {error && <Alert variant="danger">{error}</Alert>}
             <div><strong>File name:</strong> {fileDetails.name}</div>
             <div><strong>File size:</strong> {fileDetails.size}</div>
           </div>
@@ -159,7 +173,19 @@ const PredictECG = ({ ecgFile, setEcgFile, result, setResult, hidePredictButton,
           </div>
 
           <div className="d-flex justify-content-between align-items-center">
-            <Button variant="outline-secondary" size="sm" onClick={() => setStage('upload')}>Back</Button>
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => {
+                setStage('upload');
+                setError(null);
+                setLocalResult(null);
+                setFile(null);
+                setPreview(null);
+              }}
+            >
+              Back
+            </Button>
 
             {!hidePredictButton && (
               <>

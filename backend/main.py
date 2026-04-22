@@ -8,6 +8,7 @@ from PIL import Image
 from model_utils import HierarchicalECGModel
 from processor import process_ecg_signal  
 from processor import prepare_ecg_for_model
+from processor import inference_transform
 import base64
 from xai_helper import generate_heatmaps
 import matplotlib
@@ -23,6 +24,8 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from fastapi import Form
 import os
+import traceback
+from fastapi import HTTPException
 
 load_dotenv()      
 print("DEBUG - OpenAI key detected:", os.getenv("OPENAI_API_KEY"))
@@ -73,6 +76,99 @@ def encode_img(img):
     _, buffer = cv2.imencode('.jpg', img)
     return base64.b64encode(buffer).decode('utf-8')
 
+def has_ecg_waveform(gray_img):
+
+    _, binary = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=1)
+
+    contours, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours is None or len(contours) == 0:
+        return False
+
+    long_contours = 0
+    for c in contours:
+        length = cv2.arcLength(c, False)
+        area = cv2.contourArea(c)
+
+        if length > 300 and area > 50:   
+            long_contours += 1
+
+    return long_contours > 0
+
+def waveform_complexity(gray_img):
+    edges = cv2.Canny(gray_img, 50, 150)
+
+    edge_pixels = np.sum(edges > 0)
+
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=80, minLineLength=50, maxLineGap=5)
+    num_lines = 0 if lines is None else len(lines)
+
+    if edge_pixels == 0:
+        return False
+
+    ratio = num_lines / (edge_pixels / 1000)  # normalize
+
+    return ratio < 3.5
+
+def is_valid_ecg(gray_img):
+
+    total_pixels = gray_img.size
+
+    std_dev = np.std(gray_img)
+    if std_dev < 30:
+        return False
+
+    white_ratio = np.sum(gray_img > 200) / total_pixels
+    if white_ratio < 0.40:
+        return False
+
+    edges = cv2.Canny(gray_img, 50, 150)
+    edge_ratio = np.sum(edges > 0) / total_pixels
+    if edge_ratio < 0.01:
+        return False
+
+    lines = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=100,
+        minLineLength=40,
+        maxLineGap=5
+    )
+
+    if lines is None:
+        return False
+
+    horizontal_lines = 0
+    vertical_lines = 0
+
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+
+        if dx > dy and dx > 50:
+            horizontal_lines += 1
+        if dy > dx and dy > 50:
+            vertical_lines += 1
+
+    if horizontal_lines < 5:
+        return False
+
+    if vertical_lines > 2 * horizontal_lines:
+        return False
+    
+    if not waveform_complexity(gray_img):
+        return False
+
+    if not has_ecg_waveform(gray_img):
+        return False
+
+    return True
+
 # ECG endpoint
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
@@ -81,8 +177,14 @@ async def predict(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(data)).convert('RGB')
         img_np = np.array(image) 
 
-        input_tensor = prepare_ecg_for_model(img_np)
-        
+        processed_img, gray_crop = process_ecg_signal(img_np)
+
+        if not is_valid_ecg(gray_crop):
+            raise HTTPException(status_code=400, detail="Invalid image uploaded. Please upload a valid ECG image.")
+
+        tensor = inference_transform(processed_img).unsqueeze(0)
+        input_tensor = tensor.to(device)  
+
         ensemble_out1 = []
         ensemble_out2 = []
 
@@ -102,7 +204,6 @@ async def predict(file: UploadFile = File(...)):
         l2_classes = ['Normal', 'Abnormal', 'History of MI', 'Acute MI']
         l2_label = l2_classes[l2_idx]
 
-        processed_img = process_ecg_signal(img_np)
         rgb_for_xai = processed_img.astype(np.float32) / 255.0
         vis_l1, vis_l2 = generate_heatmaps(fold_models[0], input_tensor, rgb_for_xai, true_l2_label=l2_idx)
 
@@ -114,9 +215,24 @@ async def predict(file: UploadFile = File(...)):
             "heatmap_l2": f"data:image/jpeg;base64,{encode_img(vis_l2)}"
         }
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        print(traceback.format_exc()) 
+        # print(traceback.format_exc()) 
         return {"error": str(e)}
+
+def validate_clinical_input(input_dict):
+
+    required_fields = ["age", "trestbps", "chol", "thalach", "oldpeak"]
+
+    for field in required_fields:
+        value = input_dict.get(field)
+
+        if value is None:
+            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+
+        if isinstance(value, (int, float)) and value <= 0:
+            raise HTTPException(status_code=400, detail=f"Invalid value for {field}. Must be greater than 0.")
 
 def get_base64_plot(fig=None):
     buf = io.BytesIO()
@@ -177,6 +293,7 @@ class ClinicalInput(BaseModel):
 async def predict_clinical(data: ClinicalInput):
     try:
         input_dict = data.model_dump()
+        validate_clinical_input(input_dict)
         correct_order = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'ca', 'thal', 'slope']
         
         raw_values = np.array([[float(input_dict[k]) for k in correct_order]], dtype=np.float32)
